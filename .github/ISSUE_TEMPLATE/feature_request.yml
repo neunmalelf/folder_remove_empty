@@ -1,0 +1,59 @@
+name: Feature request
+description: Suggest a change to the tool — a new option, a window behaviour, an output.
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is a small, deliberate tool: it removes empty folders and reports
+        what it did. A request that keeps the behaviour contract of
+        `project_specs.md` intact has the best chance.
+
+        A security problem does not belong here: report it privately through a
+        security advisory, as `SECURITY.md` describes.
+
+  - type: input
+    id: version
+    attributes:
+      label: Program version
+      description: The output of `folder_remove_empty --version`, or the release tag you are on.
+      placeholder: "1.0.20260927162713Z"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: Distribution and version, so the suggestion can be checked where you run it.
+      placeholder: "Fedora 44, x86_64"
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: The command or action you would like to have
+      description: Write it as you would use it, even though it does not exist yet. For a window change, say which control and row it belongs to.
+      render: shell
+      placeholder: |
+        folder_remove_empty --no-gui --keep-prefix=tmp_ /tmp/tree
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What it solves
+      description: The run you cannot do today, and how you work around it now.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other shapes of the request, or why the existing switches (`--dry-run`, `--verbose`, `--no-gui`) and the `FOLDER_REMOVE_EMPTY_EXCLUDE` variable do not already cover it.
+    validations:
+      required: false

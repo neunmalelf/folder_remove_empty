@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Pre-commit hook: modular check suite for folder_remove_empty.
 # Validates version stamps and skill synchronization, then runs whole-project
-# linting (ruff), type checking (mypy), the test suite, a generated-page drift
-# check (man/tldr pages vs. the program) and an optional build.
+# linting (ruff), type checking (mypy), the test suite, a window smoke (the
+# window opens and paints no accent fill), a generated-page drift check
+# (man/tldr pages vs. the program) and an optional build.
 #
 # Usage:
 #   Direct execution: hooks/pre-commit [OPTIONS]
@@ -19,11 +20,12 @@
 #   SKIP_RUFF=1               Skip whole-project ruff linting
 #   SKIP_MYPY=1               Skip mypy type checking
 #   SKIP_TESTS=1              Skip test suite execution
+#   SKIP_GUI=1                Skip the window smoke (needs a display or xvfb-run)
 #   SKIP_DOCS=1               Skip generated man/tldr page drift validation
 #   SKIP_BUILD=1              Skip build validation
 #   PRE_COMMIT_BUILD=1        Enable standalone build verification (_build)
 
-__VERSION__="3.1.20260927162248Z"
+__VERSION__="3.2.20260927170811Z"
 
 set -euo pipefail
 
@@ -135,7 +137,63 @@ module_tests() {
     return 0
 }
 
-# Module 6: Generated documentation drift (man page, tldr page)
+# window_opens reports whether a tkinter window can be opened right now.
+window_opens() {
+    python3 - <<'PYINNER' >/dev/null 2>&1
+import sys
+import tkinter
+
+try:
+    tkinter.Tk().destroy()
+except Exception:
+    sys.exit(1)
+PYINNER
+}
+
+# gui_smoke_failed prints the window smoke failure and returns 1.
+gui_smoke_failed() {
+    echo "" >&2
+    echo "ERROR: the window smoke failed: it must open and paint no accent fill." >&2
+    echo "Run 'python3 -m pytest tests/folder_remove_empty/test_gui.py::AccentTest'." >&2
+    echo "Bypass with SKIP_GUI=1 or 'git commit --no-verify'." >&2
+    return 1
+}
+
+# Module 6: Window smoke (the window opens and carries the accent rule)
+module_gui() {
+    local -a smoke=(
+        python3 -m pytest -q
+        "tests/folder_remove_empty/test_gui.py::AccentTest"
+        "tests/folder_remove_empty/test_gui_reference.py::WindowStructureTest"
+    )
+
+    if [[ ! -d "$ROOT/tests/folder_remove_empty" ]]; then
+        echo "pre-commit [gui]: tests/folder_remove_empty missing - SKIPPED" >&2
+        return 0
+    fi
+
+    if window_opens; then
+        echo "==> pre-commit [gui]: opening the window and checking the accent rule..." >&2
+        if ! "${smoke[@]}"; then
+            gui_smoke_failed
+            return 1
+        fi
+        return 0
+    fi
+
+    if command -v xvfb-run >/dev/null 2>&1; then
+        echo "==> pre-commit [gui]: no display, opening the window under xvfb-run..." >&2
+        if ! xvfb-run -a "${smoke[@]}"; then
+            return "$(gui_smoke_failed)"
+        fi
+        return 0
+    fi
+
+    echo "pre-commit [gui]: no display and no xvfb-run - SKIPPED" >&2
+    return 0
+}
+
+# Module 7: Generated documentation drift (man page, tldr page)
 # Compares '--print-man'/'--print-tldr' with the committed pages. Reads only;
 # never writes into the tree. Skips when a page or the generator is unusable so
 # it can never mask a real failure reported by another module.
@@ -202,7 +260,7 @@ module_docs() {
     return 0
 }
 
-# Module 7: Build / packaging validation (_build script)
+# Module 8: Build / packaging validation (_build script)
 module_build() {
     local build_script="$ROOT/_build"
     if [[ ! -f "$build_script" ]]; then
@@ -225,7 +283,7 @@ module_build() {
     return 0
 }
 
-# Module 8: Drop-in directory modules (hooks/pre-commit.d/*.sh)
+# Module 9: Drop-in directory modules (hooks/pre-commit.d/*.sh)
 module_directory_hooks() {
     local hooks_dir="$ROOT/hooks/pre-commit.d"
     if [[ ! -d "$hooks_dir" ]]; then
@@ -249,7 +307,7 @@ module_directory_hooks() {
 
 # --- 3. Module Runner & Dispatcher -------------------------------------------
 
-MODULES=("version" "skill_sync" "ruff" "mypy" "tests" "docs" "build" "directory_hooks")
+MODULES=("version" "skill_sync" "ruff" "mypy" "tests" "gui" "docs" "build" "directory_hooks")
 
 is_module_skipped() {
     local mod="$1"
@@ -274,6 +332,7 @@ run_module() {
         ruff)            module_ruff ;;
         mypy)            module_mypy ;;
         tests)           module_tests ;;
+        gui)             module_gui ;;
         docs)            module_docs ;;
         build)           module_build ;;
         directory_hooks) module_directory_hooks ;;
@@ -309,13 +368,14 @@ Modules:
   ruff                 Run 'python3 -m ruff check .' on the whole project
   mypy                 Run 'python3 -m mypy' type checking
   tests                Run test suite (./_tests --quick or python3 -m pytest tests/folder_remove_empty -q)
+  gui                  Open the window, check its structure and the accent rule (xvfb-run when needed)
   docs                 Compare the generated man/tldr pages with the program output (--print-man/--print-tldr)
   build                Run ./_build (runs when PRE_COMMIT_BUILD=1 or --run=build)
   directory_hooks      Run custom scripts in hooks/pre-commit.d/*.sh
 
 Environment Overrides:
   SKIP_HOOKS=1              Skip all pre-commit modules
-  SKIP_<MODULE>=1           Skip specific module (e.g. SKIP_TESTS=1, SKIP_RUFF=1, SKIP_MYPY=1, SKIP_DOCS=1)
+  SKIP_<MODULE>=1           Skip specific module (e.g. SKIP_TESTS=1, SKIP_GUI=1, SKIP_DOCS=1, SKIP_RUFF=1)
   PRE_COMMIT_BUILD=1        Enable the build verification module
 EOF
             exit 0

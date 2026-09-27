@@ -37,15 +37,44 @@ pipx install .          # an isolated install with the folder_remove_empty scrip
 make install            # a launcher in ~/sbin, the icons and the .desktop file
 ```
 
-`make install` writes a launcher into `~/sbin`, the eight icon sizes into
+`make install` writes a launcher into `~/sbin/folder_remove_empty` that runs the
+program from this checkout (`cd <repo> && exec python3 -m folder_remove_empty "$@"`),
+copies the eight icon sizes to
 `~/.local/share/icons/hicolor/<size>x<size>/apps/folder_remove_empty.png`, and
-`assets/folder_remove_empty.desktop` into `~/.local/share/applications/` (validated
-with `desktop-file-validate` when it is installed). `make uninstall` removes all
-three again. `DEST_DIR` and `DATA_DIR` override the two target folders.
+installs `assets/folder_remove_empty.desktop` into
+`~/.local/share/applications/` (validated with `desktop-file-validate` when it is
+present). The entry then appears in the application menu as
+`FOLDER_REMOVE_EMPTY` and resolves `Exec=folder_remove_empty` through `~/sbin`.
+`make uninstall` removes the launcher, the icons and the entry again;
+`DEST_DIR` and `DATA_DIR` override the two target folders.
+
+### Standalone binary
+
+The standalone binary comes from the repository's build script (Nuitka):
+
+```bash
+./_build --package      # one compiler job, writes build/folder_remove_empty
+```
+
+It produces `build/folder_remove_empty` (a 14 MB onefile binary with Tcl/Tk
+bundled, no Python installation needed), `build/SHA256SUMS` and
+`build/release_manifest.json`. Verify with `cd build && sha256sum -c
+SHA256SUMS`. `./_build --release` additionally tags the commit and publishes a
+GitHub release with those three files. Note that `_build` installs the binary
+into `~/sbin/folder_remove_empty`; run `make install` afterwards when the
+launcher should live there instead.
 
 ## The window
 
-The window is the default front end. Top to bottom it holds:
+The window is the default front end. Light and dark theme, as the program paints
+them (`assets/window-light.png`, `assets/window-dark.png`; the theme button in
+the row below names the theme it switches to):
+
+![the window in the light theme](assets/window-light.png)
+
+![the window in the dark theme](assets/window-dark.png)
+
+Top to bottom it holds:
 
 | Row | What it holds |
 |---|---|

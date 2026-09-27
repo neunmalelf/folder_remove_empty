@@ -1,0 +1,100 @@
+name: Bug report
+description: The program behaves differently from the documented behaviour — see project_specs.md.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. The behaviour contract is `project_specs.md`, so
+        the fastest fix is a report that pins the difference to one rule there.
+
+        A security problem does not belong here: report it privately through a
+        security advisory, as `SECURITY.md` describes.
+
+  - type: input
+    id: version
+    attributes:
+      label: Program version
+      description: The output of `folder_remove_empty --version`, or the release tag.
+      placeholder: "1.0.20260927162713Z"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: Distribution and version, and the file system when it matters (NFS, FAT, tmpfs, container overlay…).
+      placeholder: "Fedora 44, ext4, x86_64"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How it runs
+      description: Which build and which front end you used.
+      options:
+        - Nuitka standalone binary from the release page
+        - pipx install
+        - make install launcher
+        - python3 -m remove_empty_folder from the checkout
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command line
+      description: The whole invocation, start folder included. For the window, the startup command plus the options set in the window.
+      render: shell
+      placeholder: |
+        folder_remove_empty --no-gui --verbose --dry-run /tmp/tree
+    validations:
+      required: true
+
+  - type: textarea
+    id: tree
+    attributes:
+      label: Folder tree shape
+      description: |
+        The smallest tree that still shows the problem: the folders, and what
+        each one holds. Say when a folder is unreadable or unwritable, when a
+        name is on the keep list, and where the links point.
+      render: text
+      placeholder: |
+        /tmp/tree                    <- start folder
+        /tmp/tree/a                  <- empty
+        /tmp/tree/a/b                <- empty
+        /tmp/tree/c                  <- holds one file, must stay
+        /tmp/tree/c/file.txt
+        /tmp/tree/d                  <- mode 0000, unreadable
+        /tmp/tree/e -> /tmp/tree/c   <- symlink, must stay
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: The rule from project_specs.md that you think applies, and the outcome it calls for.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: The output you got. For a window problem, what the history list and the status line showed.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Settings file contents (`~/.config/folder_remove_empty/folder_remove_empty.conf`), environment variables, screenshots.
+    validations:
+      required: false

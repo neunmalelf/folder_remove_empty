@@ -884,3 +884,42 @@ Beyond the phases, the port is wired into the desktop and the release path:
 Upkeep that stays open by nature: extend `ChangeLog.md` and `NEWS` with every
 change, re-run `make final` before a commit, and re-stamp `__VERSION__` (and
 then `make man`) whenever the version changes, because the man page embeds it.
+
+### Release checklist (repeatable)
+
+The sequence below is the one `v1.0.20260927162713Z` was cut in. Every step
+runs from the repository root and is meant to be copy-pasteable as written.
+
+1. `./make final` — the whole pre-commit check in one target: `_tests`
+   (pytest, ruff, mypy), `make man` and `make tldr` (both pages regenerated
+   from the program itself) and the `_check_version` / `_skill_sync --check`
+   validators.
+2. `make man` and `make tldr` again after any `__VERSION__` re-stamp: the man
+   page embeds the stamp in its `.TH` line, so a bump that lands after step 1
+   leaves the committed page stale.
+3. `./_build --package` — the Nuitka build (one compiler job unless `--jobs`
+   says otherwise) writes `build/folder_remove_empty`, `build/SHA256SUMS` and
+   `build/release_manifest.json`.
+4. Verify the three artifacts: `cd build && sha256sum -c SHA256SUMS` (every
+   line must read `OK`, then `cd ..`), read
+   `build/release_manifest.json` against the binary, and run
+   `./build/folder_remove_empty --version` and
+   `./build/folder_remove_empty --help` to see the packaged front ends come
+   up.
+5. `git add -A && git commit` — the installed pre-commit hook must pass; it
+   is the gate that keeps pages, version strings and the build honest.
+6. `git push origin master`.
+7. Tag and push the tag:
+   `git tag -a "v$VERSION" -m "Release v$VERSION" && git push origin "v$VERSION"`.
+8. Publish the release with its three assets: `gh release create "v$VERSION" \
+   build/folder_remove_empty build/SHA256SUMS build/release_manifest.json \
+   --title "v$VERSION" --notes "<what changed>"`. `./_build --release` folds
+   steps 7 and 8 into the build step.
+9. `gh release view "v$VERSION"` — confirm the binary, `SHA256SUMS` and
+   `release_manifest.json` are all attached before calling it done.
+
+Two traps bit us and are worth repeating: a version re-stamp leaves the
+committed man page stale until `make man` runs again, and the hook's `docs`
+module blocks the commit until it does; and `_build` installs the standalone
+binary over `~/sbin/folder_remove_empty`, so re-run `make install` when the
+launcher there is wanted again.
