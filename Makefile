@@ -19,7 +19,7 @@ MAN_DIR    := man
 TLDR_DIR   := tldr
 
 .DEFAULT_GOAL := help
-.PHONY: help test test-quick check-gui check-313 pins run man tldr icons screenshots install uninstall clean final
+.PHONY: help test test-quick check-gui check-313 check-all pins run man tldr icons screenshots install uninstall clean final
 
 # Print the target list.
 help:
@@ -27,8 +27,9 @@ help:
 	@echo ""
 	@echo "  make test         run the whole check (pytest + ruff + mypy) via ./_tests"
 	@echo "  make test-quick   run the test suite only (./_tests --quick)"
-	@echo "  make check-gui    run the window checks on a private display (xvfb-run)"
+	@echo "  make check-gui    run the window checks on a private display (=session asks for yours)"
 	@echo "  make check-313    run the whole check and the window checks on Python 3.13 (podman)"
+	@echo "  make check-all    the pre-push set: final + check-gui + check-313"
 	@echo "  make pins         fail when the installed dev tools drift from requirements-dev.txt"
 	@echo "  make run          start the program (python3 -m folder_remove_empty)"
 	@echo "  make man          write the man page into $(MAN_DIR)/"
@@ -106,13 +107,12 @@ uninstall:
 	@echo "uninstalled: $(APP)"
 
 # Remove every build output and cache of the project.
-# Run the window checks: the policy module decides where they run (a private
-# display by default, FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session asks for yours).
+# Run the window checks: the policy module decides where (a private display by
+# default, FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session asks for yours) and
+# tests/folder_remove_empty/window_checks.sh owns the module list.
 check-gui:
-	@python3 -m remove_empty_folder_display --wrap $(PYTHON) -m pytest -q \
-		tests/folder_remove_empty/test_gui.py \
-		tests/folder_remove_empty/test_gui_reference.py \
-		tests/folder_remove_empty/test_private_display.py
+	@python3 -m remove_empty_folder_display --wrap-sh \
+		'bash tests/folder_remove_empty/window_checks.sh --assert-private'
 
 # Verify the declared floor on demand: the whole check plus the window checks
 # on Python 3.13 inside a container (the CI interpreter). The repository is
@@ -152,5 +152,9 @@ clean:
 # The release check: the whole suite, both generated pages, the two repository
 # validators and the pinned toolchain a release has to be cut in.
 final: test man tldr pins
+
+# The pre-push set: everything `final` runs, the window checks on a private
+# display and the same checks again on Python 3.13 in a container (the slow one).
+check-all: final check-gui check-313
 	@./_check_version
 	@./_skill_sync --check

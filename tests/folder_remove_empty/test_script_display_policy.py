@@ -39,6 +39,8 @@ WINDOW_RUN = re.compile(
 PURE_OUTPUT = re.compile(r"--(?:no-gui|help|version|print-man|print-tldr)")
 # a real Tk use, not the word in a help text
 TK_USE = re.compile(r"^\s*(?:import|from)\s+tkinter\b|remove_empty_folder_gui", re.MULTILINE)
+# a script that runs the window test modules opens windows just as well
+WINDOW_TESTS = re.compile(r"test_gui(?:_reference)?\.py")
 # a private display is asked for through xvfb-run or through the policy module
 PRIVATE_MECHANISM = ("xvfb-run", "remove_empty_folder_display")
 
@@ -55,6 +57,7 @@ def script_paths() -> list[str]:
     paths = [os.path.join(ROOT, name) for name in ROOT_SCRIPTS]
     paths.append(HOOK)
     paths.append(MAKEFILE)
+    paths.append(os.path.join(ROOT, "tests", "folder_remove_empty", "window_checks.sh"))
     assets = os.path.join(ROOT, "assets")
     if os.path.isdir(assets):
         paths.extend(
@@ -135,7 +138,11 @@ class ScriptDisplayPolicyTest(unittest.TestCase):
             if name in SESSION_OPENERS:
                 continue
             text = reads(path)
-            if not runs_the_window(text) and not TK_USE.search(text):
+            if (
+                not runs_the_window(text)
+                and not TK_USE.search(text)
+                and not WINDOW_TESTS.search(text)
+            ):
                 continue
             with self.subTest(script=name):
                 self.assertTrue(

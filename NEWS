@@ -3,6 +3,18 @@ folder_remove_empty NEWS -- history of user-visible changes.
 User-visible highlights per release. The full per-version log is in
 `ChangeLog.md`.
 
+* Version 1.6.20260927202851 (2026-09-27)
+
+** One command, one list, no leftover noise
+
+   `make check-all` runs the whole pre-push set (`final`, `check-gui`,
+   `check-313`); `make check-gui` is a one-liner because
+   `tests/folder_remove_empty/window_checks.sh` owns the window module list;
+   `docs/checks.md` documents every target, script and hook module. The window
+   tests now close the window through the program's own close path, which stops a
+   run in flight and cancels the pending callbacks before the root goes away —
+   the tkinter teardown warning ("main thread is not in main loop") is gone.
+
 * Version 1.5.20260927201516 (2026-09-27)
 
 ** The wrapper carries the checks

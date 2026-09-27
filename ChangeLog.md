@@ -5,6 +5,34 @@ A version is the UTC timestamp of its change, `x.x.YYYYMMDDhhmmss`, the output o
 `~/sbin/timestamp`. The user-facing highlights per release, in prose, are in
 `NEWS`.
 
+## 1.6.20260927202851 - 2026-09-27
+
+### Added
+
+- `make check-all`: the pre-push set in one command (`final`, `check-gui`,
+  `check-313`).
+- `tests/folder_remove_empty/window_checks.sh`: the one place that lists the
+  window test modules, used by `make check-gui`, by the policy wrapper and by the
+  display guard's private re-run. `--assert-private` refuses a session display,
+  `--list` prints the modules.
+- `docs/checks.md`: every check target, script and hook module, the environment
+  variables that skip them, and what to do when one fails.
+
+### Changed
+
+- `make check-gui` is one line: `--wrap-sh` runs `window_checks.sh
+  --assert-private`, so neither the Makefile nor the hook names a test module.
+- the window tests close the window the way the program does (`_close_window`),
+  stopping a run in flight and cancelling the pending `after` callbacks before
+  the root goes away. Collecting a tkinter `Variable` after Tcl is gone used to
+  report "Exception ignored ... main thread is not in main loop" on most runs;
+  four consecutive private runs are clean now, and the teardown exercises the
+  real close path.
+- `gui_display.py` lost the re-exports nothing reads (`XVFB_RUN`,
+  `SESSION_WANTED`, `POLICY`, `PRIVATE_MARKER`, `DISPLAY_MARKER`, `REFUSAL`,
+  `NO_WINDOW`, `window_refusal`); the policy module is the one public home, and
+  `test_script_display_policy.py` now also watches `window_checks.sh`.
+
 ## 1.5.20260927201516 - 2026-09-27
 
 ### Added

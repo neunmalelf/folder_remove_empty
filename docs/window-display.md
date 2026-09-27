@@ -1,7 +1,9 @@
 # Window tests and your screen
 
 This page is the long form of the *Window tests and your screen* section of
-`README.md`; the policy itself lives in `remove_empty_folder_display.py`.
+`README.md`; the policy itself lives in `remove_empty_folder_display.py`. What
+each check target does (and the pre-push set `make check-all`) is in
+[`checks.md`](checks.md).
 
 ## Why
 

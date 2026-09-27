@@ -14,20 +14,13 @@ skip when there is no display at all.
 """
 
 from remove_empty_folder_display import (
-    DISPLAY_MARKER,
-    POLICY,
-    PRIVATE_MARKER,
     SESSION_MARKER,
     marked_private,
     private_display_wanted,
     run_under_xvfb,
-    session_wanted,
-    xvfb_run,
 )
 
-XVFB_RUN = xvfb_run()
 PRIVATE = marked_private()
-SESSION_WANTED = session_wanted()
 
 
 def window_refusal() -> str | None:
@@ -68,17 +61,9 @@ def skip_arguments() -> tuple[bool, str]:
 
 
 __all__ = [
-    "DISPLAY_MARKER",
-    "NO_WINDOW",
-    "POLICY",
     "PRIVATE",
-    "PRIVATE_MARKER",
-    "REFUSAL",
     "SESSION_MARKER",
-    "SESSION_WANTED",
-    "XVFB_RUN",
     "private_display_wanted",
     "run_under_xvfb",
     "skip_arguments",
-    "window_refusal",
 ]

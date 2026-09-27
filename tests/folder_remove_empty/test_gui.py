@@ -60,7 +60,22 @@ class WindowTestCase(unittest.TestCase):
         self.root.update()
 
     def _destroy_root(self) -> None:
-        """destroy the test root once, ignoring a root a test closed already."""
+        """close the window the way the program closes it, then destroy the root."""
+        # `_close_window` cancels the pending `after` callbacks, stops a run in
+        # flight, saves the settings and destroys the root. A bare
+        # `root.destroy()` leaves the callbacks (and with them the tkinter
+        # Variables) alive, and collecting those after Tcl is gone reports
+        # "Exception ignored ... main thread is not in main loop".
+        window = getattr(self, "window", None)
+        control = getattr(window, "_control", None)
+        thread = getattr(window, "_thread", None)
+        if control is not None:
+            control.stop()
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=10.0)
+        if window is not None:
+            with contextlib.suppress(tkinter.TclError):
+                window._close_window()
         with contextlib.suppress(AttributeError, tkinter.TclError):
             self.root.destroy()
 

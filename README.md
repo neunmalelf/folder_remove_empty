@@ -232,7 +232,9 @@ runs the window checks on a private display by hand and `make check-313` runs
 them on Python 3.13 in a container. Without `xvfb-run` the tests fall back to
 the session display, or skip when there is no display at all. The full contract,
 including what a new script has to do, is in
-[`docs/window-display.md`](docs/window-display.md).
+[`docs/window-display.md`](docs/window-display.md); what every check target and
+hook module does is in [`docs/checks.md`](docs/checks.md), and the pre-push set is
+one command: `make check-all`.
 
 ## Development
 

@@ -71,8 +71,9 @@ Every module can be skipped with `SKIP_<MODULE>=1`, all of them with
   they are what proves the port still behaves like the original.
 - **Where the checks run**: `make final` runs the whole repository check on the
   interpreter you are working in, `make check-313` repeats it on Python 3.13 in a
-  container (the run before a push, see `docs/window-display.md`), and CI runs
-  the suite, ruff and mypy natively on Python 3.13. CI therefore does not need
+  container (the run before a push), `make check-all` is the whole pre-push set,
+  and CI runs the suite, ruff and mypy natively on Python 3.13. The targets, the
+  scripts and the hook modules are in `docs/checks.md`. CI therefore does not need
   `check-313`: its interpreter *is* the floor, a nested container would only test
   the same version a second time with more moving parts.
 - **Windows and automation**: any script, test or check that opens the window
