@@ -19,7 +19,7 @@ MAN_DIR    := man
 TLDR_DIR   := tldr
 
 .DEFAULT_GOAL := help
-.PHONY: help test test-quick check-gui check-313 run man tldr icons screenshots install uninstall clean final
+.PHONY: help test test-quick check-gui check-313 pins run man tldr icons screenshots install uninstall clean final
 
 # Print the target list.
 help:
@@ -29,6 +29,7 @@ help:
 	@echo "  make test-quick   run the test suite only (./_tests --quick)"
 	@echo "  make check-gui    run the window checks on a private display (xvfb-run)"
 	@echo "  make check-313    run the whole check and the window checks on Python 3.13 (podman)"
+	@echo "  make pins         fail when the installed dev tools drift from requirements-dev.txt"
 	@echo "  make run          start the program (python3 -m folder_remove_empty)"
 	@echo "  make man          write the man page into $(MAN_DIR)/"
 	@echo "  make tldr         write the tldr page into $(TLDR_DIR)/"
@@ -40,6 +41,10 @@ help:
 	@echo "  make final        test + man + tldr + ./_check_version + ./_skill_sync --check"
 	@echo ""
 	@echo "  install folders:  DEST_DIR=$(DEST_DIR)  DATA_DIR=$(DATA_DIR)"
+
+# Fail when the working interpreter does not match the pins CI installs.
+pins:
+	@./_check_pins --strict
 
 # Run the full check: pytest, ruff and mypy, all from ./_tests.
 test:
@@ -153,8 +158,8 @@ clean:
 	rm -rf .pytest_cache/ .mypy_cache/ .ruff_cache/
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +
 
-# The release check: the whole suite, both generated pages and the two
-# repository validators.
-final: test man tldr
+# The release check: the whole suite, both generated pages, the two repository
+# validators and the pinned toolchain a release has to be cut in.
+final: test man tldr pins
 	@./_check_version
 	@./_skill_sync --check

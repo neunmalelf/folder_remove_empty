@@ -17,6 +17,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -160,6 +161,40 @@ class ScriptDisplayPolicyTest(unittest.TestCase):
         )
         self.assertEqual(where.returncode, 0, where.stdout + where.stderr)
         self.assertIn("private display :99", where.stdout)
+
+    def test_wrap_moves_a_command_to_a_private_display(self) -> None:
+        away = {"DISPLAY": ":0", "FOLDER_REMOVE_EMPTY_SESSION_DISPLAY": ":0"}
+
+        printed = self.run_policy({**away}, ["--wrap", "--print", "python3", "-c", "print(1)"])
+        self.assertEqual(printed.returncode, 0, printed.stdout + printed.stderr)
+        self.assertIn("xvfb-run", printed.stdout)
+        self.assertIn("python3 -c", printed.stdout)
+
+        private = self.run_policy(
+            {**away, "FOLDER_REMOVE_EMPTY_PRIVATE_DISPLAY": "1"},
+            ["--wrap", "--print", "python3", "-c", "print(1)"],
+        )
+        self.assertEqual(private.returncode, 0, private.stdout + private.stderr)
+        self.assertEqual(private.stdout.strip(), "python3 -c 'print(1)'")
+
+        # a file, not `python3 -c`: xvfb-run re-splits a command string, so the
+        # quoting of an inline program does not survive the wrapper
+        with tempfile.TemporaryDirectory() as scratch:
+            probe = os.path.join(scratch, "probe.py")
+            with open(probe, "w", encoding="utf-8") as handle:
+                handle.write(
+                    "import os, sys\n"
+                    "print(os.environ.get('DISPLAY'),\n"
+                    "      os.environ.get('FOLDER_REMOVE_EMPTY_PRIVATE_DISPLAY'),\n"
+                    "      os.environ.get('FOLDER_REMOVE_EMPTY_SESSION_DISPLAY'))\n"
+                    "sys.exit(3)\n"
+                )
+            ran = self.run_policy({**away}, ["--wrap", sys.executable, probe])
+        self.assertEqual(ran.returncode, 3, ran.stdout + ran.stderr)
+        display, marker, session = ran.stdout.split()
+        self.assertNotEqual(display, ":0")
+        self.assertEqual(marker, "1")
+        self.assertEqual(session, ":0")
 
     def run_policy(
         self, environment: dict[str, str], argv: list[str]

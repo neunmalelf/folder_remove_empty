@@ -21,6 +21,10 @@ jobs:
       # https://github.com/actions/setup-python/releases/tag/v6.3.0
       - uses: actions/setup-python@v6
         with:
+          # 3.13 is the declared floor (requires-python, ruff target-version).
+          # `make check-313` reproduces this exact environment locally in a
+          # podman container, which is why this workflow stays a native run on
+          # the runner instead of nesting a container inside a job.
           python-version: "3.13"
 
       # tkinter is the window, xvfb-run gives the window tests a display.

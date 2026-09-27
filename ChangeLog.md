@@ -5,6 +5,30 @@ A version is the UTC timestamp of its change, `x.x.YYYYMMDDhhmmss`, the output o
 `~/sbin/timestamp`. The user-facing highlights per release, in prose, are in
 `NEWS`.
 
+## 1.4.20260927194352 - 2026-09-27
+
+### Added
+
+- `python3 -m remove_empty_folder_display --wrap CMD...` runs a command on a
+  private display (xvfb-run, the markers, its exit status) and
+  `--wrap --print CMD...` prints that command line; a shell script no longer has
+  to spell the xvfb invocation itself.
+- `make pins` (`./_check_pins --strict`) and `make final` now runs it, so a
+  release cannot be cut in an environment that drifts from the pins CI installs.
+
+### Changed
+
+- the pre-commit `gui` module delegates to `make check-gui` instead of driving
+  the guard test itself, so a commit and the manual target check the same thing;
+  with `FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session` it runs the three window modules
+  on the session display (before, that mode checked nothing).
+- `CONTRIBUTING.md` and the workflow explain why `make check-313` stays a local
+  target: CI runs natively on the same 3.13, so a nested container in a job would
+  only test the same interpreter twice.
+- `docs/window-display.md` documents `--wrap` and the trap that `xvfb-run`
+  re-splits the command string, so an inline `python3 -c "..."` loses its
+  quoting — pass a script file.
+
 ## 1.3.20260927191420 - 2026-09-27
 
 ### Added

@@ -26,7 +26,7 @@
 #   SKIP_BUILD=1              Skip build validation
 #   PRE_COMMIT_BUILD=1        Enable standalone build verification (_build)
 
-__VERSION__="3.2.20260927170811Z"
+__VERSION__="3.3.20260927213500Z"
 
 set -euo pipefail
 
@@ -163,12 +163,14 @@ gui_smoke_failed() {
 # Module 6: Window smoke (the window opens and carries the accent rule)
 #
 # The window is opened on a private Xvfb display, never on the screen the user is
-# working on: the guard in tests/folder_remove_empty/test_private_display.py runs
-# the two window modules under xvfb-run and re-runs itself there.
+# working on. `make check-gui` owns that invocation (xvfb-run, the private marker
+# and the window modules); this module only decides between the two modes, so a
+# commit and the manual target check exactly the same thing.
 # FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session asks for the session screen instead.
 module_gui() {
-    local -a smoke=(
-        python3 -m pytest -q
+    local -a window_modules=(
+        "tests/folder_remove_empty/test_gui.py"
+        "tests/folder_remove_empty/test_gui_reference.py"
         "tests/folder_remove_empty/test_private_display.py"
     )
 
@@ -184,11 +186,15 @@ module_gui() {
 
     if [[ "${FOLDER_REMOVE_EMPTY_GUI_DISPLAY:-}" == "session" ]]; then
         echo "==> pre-commit [gui]: opening the window on the session display (asked for)..." >&2
-    else
-        echo "==> pre-commit [gui]: opening the window on a private display..." >&2
+        if ! python3 -m pytest -q "${window_modules[@]}"; then
+            gui_smoke_failed
+            return 1
+        fi
+        return 0
     fi
 
-    if ! "${smoke[@]}"; then
+    echo "==> pre-commit [gui]: opening the window on a private display (make check-gui)..." >&2
+    if ! make -C "$ROOT" check-gui; then
         gui_smoke_failed
         return 1
     fi

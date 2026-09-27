@@ -67,7 +67,13 @@ python3 -m remove_empty_folder_display --check your_script.sh
 ```
 
 `--print` reports where the current process would open a window, `--check` exits
-1 with the reason when that would be the session display. `test_script_display_policy.py`
+1 with the reason when that would be the session display, and `--wrap CMD...`
+runs the command on a private display, inheriting the markers and returning its
+exit status (`--wrap --print CMD...` prints that command line instead).
+
+One trap: `xvfb-run` re-splits the command it is given, so an inline program
+loses its quoting — `python3 -c "print('x')"` arrives as `print(x)`. Pass a
+script file (or `--wrap` a file), not a command with quoted arguments. `test_script_display_policy.py`
 fails the suite when a new script runs the program without one of the two.
 
 ## Without `xvfb-run`

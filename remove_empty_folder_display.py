@@ -18,6 +18,7 @@ stops itself with:
 """
 
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -148,6 +149,57 @@ def require_private_display(role: str = "automation") -> None:
     raise SystemExit(1)
 
 
+def private_environment() -> dict[str, str]:
+    """build the environment of a run that is moved to a private display
+    usage: private_environment
+    returns: the environment with the private marker, the private display name,
+             the recorded session display and without DISPLAY
+
+    example: private_environment()
+
+    """
+    environment = dict(os.environ, **{PRIVATE_MARKER: "1"})
+    environment[DISPLAY_MARKER] = "private"
+    session = os.environ.get("DISPLAY")
+    if session is not None:
+        environment[SESSION_MARKER] = session
+    environment.pop("DISPLAY", None)
+    return environment
+
+
+def wrap_command(argv: Sequence[str]) -> list[str]:
+    """build the command line that runs a program on a private display
+    usage: wrap_command <ARGV>
+    returns: xvfb-run plus the command, or the command itself when this run is
+             private already, the session display was asked for or xvfb-run is
+             not installed
+
+    example: wrap_command(["python3", "your_check.py"])
+
+    """
+    runner = xvfb_run()
+    if display_is_private() or session_wanted() or runner is None:
+        return list(argv)
+    return [runner, *XVFB_ARGS, *argv]
+
+
+def run_wrapped(argv: Sequence[str]) -> int:
+    """run a command on a private display and report its exit status
+    usage: run_wrapped <ARGV>
+    returns: the exit status of the command, 2 when no command was given
+
+    example: run_wrapped(["python3", "your_check.py"])
+
+    """
+    if not argv:
+        print("remove_empty_folder_display: --wrap needs a command", file=sys.stderr)
+        return 2
+    command = wrap_command(argv)
+    if command == list(argv):
+        return subprocess.run(command).returncode
+    return subprocess.run(command, env=private_environment()).returncode
+
+
 def run_under_xvfb(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
     """run a command on a fresh private Xvfb display
     usage: run_under_xvfb <ARGV>
@@ -157,12 +209,7 @@ def run_under_xvfb(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
     example: run_under_xvfb([sys.executable, "-m", "pytest", "-q", "tests/..."])
 
     """
-    environment = dict(os.environ, **{PRIVATE_MARKER: "1"})
-    environment[DISPLAY_MARKER] = "private"
-    session = os.environ.get("DISPLAY")
-    if session is not None:
-        environment[SESSION_MARKER] = session
-    environment.pop("DISPLAY", None)
+    environment = private_environment()
     runner = xvfb_run()
     assert runner is not None, "xvfb-run is not installed"
     return subprocess.run(
@@ -210,6 +257,10 @@ options:
   --check       exit 0 when this run is private (or the session display was
                 asked for), else print the reason and exit 1
   --print       print where this run would open a window and exit
+  --wrap CMD    run CMD on a private display (xvfb-run; it inherits the markers
+                and its exit status is returned)
+  --wrap --print CMD
+                print that command line instead of running it
 
 environment:
   {POLICY}=session                    open on the session display (default: never)
@@ -221,13 +272,16 @@ environment:
 def main(argv: Sequence[str] | None = None) -> int:
     """run the command line of the display policy
     usage: main [ARGV]
-    returns: the exit status: 0 private or asked for, 1 not private, 2 usage
+    returns: the exit status: 0 private or asked for, 1 not private, 2 usage,
+             else the status of the wrapped command
 
     example: main(["--check"])
 
     """
     arguments = list(argv if argv is not None else sys.argv[1:])
-    for argument in arguments:
+    index = 0
+    while index < len(arguments):
+        argument = arguments[index]
         if argument in ("-h", "--help"):
             print(usage())
             return 0
@@ -240,6 +294,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             except SystemExit as status:
                 return int(status.code or 1)
             return 0
+        if argument == "--wrap":
+            rest = arguments[index + 1 :]
+            if rest[:1] == ["--print"]:
+                print(shlex.join(wrap_command(rest[1:])))
+                return 0
+            return run_wrapped(rest)
         print(f"remove_empty_folder_display: unknown option {argument!r}")
         return 2
     print(usage())
