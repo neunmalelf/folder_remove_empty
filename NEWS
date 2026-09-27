@@ -5,11 +5,16 @@ User-visible highlights per release. The full per-version log is in
 
 * Version 1.0.20260927131905 (2026-09-27)
 
-** The Python port begins
+** The Python port is complete
 
-   folder_remove_empty is being rewritten in Python. This first release ships
-   the packaging, the version identity and the `--version` entry point: the
-   project installs with `pip install .` (one console script, a distribution
-   version derived from the repository stamp), and the test skeleton plus the
-   adapted repository scripts are in place. The engine and both front ends -
-   the terminal mode and the tkinter window - follow.
+   folder_remove_empty is now written in Python. The release brings the same
+   rules as the original: the shared engine that removes empty folders deepest
+   first, the terminal mode with its stdout/stderr split and its colours, and
+   the tkinter window with pause, restart, the folder picker and the history
+   filters. The man page and the tldr page are generated from the program, the
+   window remembers its size, position and settings in a small settings file,
+   and the test suite compares the port with the captured behaviour of the
+   original - stream for stream and exit code for exit code.
+
+   `make install` puts a launcher in `~/sbin`, the eight icon sizes into the
+   icon theme and a `.desktop` file into the application menu.

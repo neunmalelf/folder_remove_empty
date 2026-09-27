@@ -1,13 +1,11 @@
 # FOLDER_REMOVE_EMPTY
 
-> **Status — the port is in progress.**
-> Phase 1 is done: the setuptools packaging with a single console script and a
-> derived version, the version module, the `--version` entry point, the
-> `.gitignore`, the test skeleton and the repository scripts adapted to this
-> project. The engine, the terminal mode and the window follow, so the sections
-> below describe the **target** behaviour of the finished program and do not
-> mean it already runs. The plan is in `todo/goal.md`, the behaviour contract in
-> `project_specs.md`.
+> **Status — the port is complete.** The engine, the command line, the terminal
+> mode, the generated man and tldr pages, the tkinter window and the persisted
+> settings file are implemented and green (142 tests plus 107 subtests). The
+> plan is in `todo/goal.md`, the behaviour contract in `project_specs.md`, the
+> reference behaviour of the original Go program in
+> `tests/folder_remove_empty/reference/`.
 
 FOLDER_REMOVE_EMPTY removes every empty folder below a start folder, deepest
 first. The start folder itself is never removed, only the folders below it.
