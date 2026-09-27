@@ -10,6 +10,21 @@ from collections.abc import Generator
 
 from remove_empty_folder_core import Action, Event, Observer, Summary
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+REFERENCE = os.path.join(HERE, "reference")
+
+
+def reference_text(name: str) -> str:
+    """read one captured Go output file from the reference directory
+    usage: reference_text <NAME>
+    returns: the captured text of that file
+
+    example: reference_text("info_help.out")
+
+    """
+    with open(os.path.join(REFERENCE, name), encoding="utf-8") as handle:
+        return handle.read()
+
 
 def tmp_tree(spec: dict[str, object]) -> str:
     """build a folder tree from a nested dict and return its root folder

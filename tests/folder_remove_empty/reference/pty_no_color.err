@@ -1,0 +1,4 @@
+path exists: /tmp/fre-pty.GMLIjB/pty_no_color/tree
+start folder: /tmp/fre-pty.GMLIjB/pty_no_color/tree
+not removed: /tmp/fre-pty.GMLIjB/pty_no_color/tree/readonly/inner (remove /tmp/fre-pty.GMLIjB/pty_no_color/tree/readonly/inner: permission denied)
+1 folder(s) kept

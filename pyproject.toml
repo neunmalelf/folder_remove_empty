@@ -49,7 +49,17 @@ version = {attr = "remove_empty_folder_version.__version__"}
 folder_remove_empty = "folder_remove_empty:main"
 
 [tool.setuptools]
-py-modules = ["folder_remove_empty", "remove_empty_folder_core", "remove_empty_folder_version"]
+py-modules = [
+    "folder_remove_empty",
+    "remove_empty_folder_config",
+    "remove_empty_folder_core",
+    "remove_empty_folder_docs",
+    "remove_empty_folder_gui",
+    "remove_empty_folder_options",
+    "remove_empty_folder_report",
+    "remove_empty_folder_theme",
+    "remove_empty_folder_version",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -73,7 +83,13 @@ select = [
 python_version = "3.13"
 files = [
     "folder_remove_empty.py",
+    "remove_empty_folder_config.py",
     "remove_empty_folder_core.py",
+    "remove_empty_folder_docs.py",
+    "remove_empty_folder_gui.py",
+    "remove_empty_folder_options.py",
+    "remove_empty_folder_report.py",
+    "remove_empty_folder_theme.py",
     "remove_empty_folder_version.py",
     "tests",
 ]

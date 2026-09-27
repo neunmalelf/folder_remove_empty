@@ -1,0 +1,152 @@
+.TH FOLDER_REMOVE_EMPTY 1 "1.0.20260927131905Z" "1.0.20260927131905Z" "User Commands"
+.SH NAME
+folder_remove_empty \- remove every empty folder below a start folder
+.SH SYNOPSIS
+.B folder_remove_empty
+[\fIoptions\fR] [\fIpath\fR]
+.SH DESCRIPTION
+.B folder_remove_empty
+removes every empty folder below a start folder, deepest first. The start
+folder itself is never removed, only the folders below it.
+.PP
+A folder is empty when it holds no file, no link and no subfolder that is not
+empty itself. The folders are rated bottom up, so one run removes a whole chain
+of nested empty folders: a folder is removed as soon as its last empty
+subfolder is gone. Removing a folder with
+.BR rmdir (1)
+never touches content, and a folder that is not empty is refused.
+.PP
+Without arguments the program opens a window that shows the start path with its
+check, the options as check boxes and the folder that is worked on right now,
+and lists every folder the run worked on in a history. With
+.B \-\-no\-gui
+the run works on the terminal instead, like the shell original did.
+.PP
+A given
+.I path
+must exist and must be a folder. It is made absolute before the run, so the
+report and the history name the folder in full.
+.SH OPTIONS
+.TP
+\fB\-d\fR, \fB\-\-dryrun\fR
+Print the folders that would be removed and remove nothing.
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Report every kept folder that was left in place.
+.TP
+\fB\-\-no\-gui\fR
+Work on the terminal instead of opening the window.
+.TP
+\fB\-\-print\-man\fR
+Print this man page and exit.
+.TP
+\fB\-\-print\-tldr\fR
+Print the tldr page and exit.
+.TP
+\fB\-\-version\fR
+Print the program version and exit.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print the usage text and exit.
+.SH THE WINDOW
+.TP
+\fBStart path\fR
+The folder to scan. It is checked as you type: the line below the field names
+the absolute folder or the reason it cannot be used. Without a path the current
+folder is used. The button behind the field asks for a folder instead of making
+the path be typed.
+.TP
+\fBDry run\fR, \fBVerbose\fR
+The options \fB\-d\fR and \fB\-v\fR.
+.TP
+\fBExtra excludes\fR
+Folder names that are never removed, ':' separated. A name that ends with '*'
+keeps every name that starts with it.
+.TP
+\fBShow in history\fR
+Which outcomes the history lists, and which it leaves out.
+.TP
+\fBHelp\fR
+Show the usage text in a dialog that scrolls.
+.TP
+\fBLight mode\fR, \fBDark mode\fR
+Switch the window between the light and the dark theme. The button names the
+theme it switches to; the foreground, the background and the control borders
+follow the switch. The window starts in the variant the desktop asks for.
+.TP
+\fBExit\fR
+Close the window. A run in flight is stopped.
+.TP
+\fBPause\fR
+Hold the run in front of the next folder. The button turns into
+.B Resume
+while the run is held.
+.TP
+\fB(Re)start\fR
+Start the job. While a run is in flight the button stops it and starts the job
+over with the settings of the fields.
+.TP
+\fBCurrent folder\fR
+The folder that is rated or removed right now.
+.TP
+\fBHistory\fR
+Every folder this session worked on, with its outcome.
+.PP
+The window carries the app icon, a purple rectangle with the white letters "fr",
+in the sizes a desktop asks for; \fBmake install\fR copies them below
+\fI~/.local/share/icons/hicolor\fR.
+.SH KEPT FOLDERS
+Never removed: \fB.Trash\-1000\fR, \fB.cache\fR, \fBSystem Volume Information\fR
+and \fB$RECYCLE.BIN\fR (with or without the leading dot), every name that
+starts with \fBZZZZ\fR, every name that starts with four digits and every name
+that holds "!!! MISSING !!!" in any letter case.
+.PP
+The empty subfolders of a kept folder are still removed. The kept folder itself
+stays, also when it is empty then, unless its parent is empty apart from empty
+kept folders: then it goes with the parent.
+.SH ENVIRONMENT
+.TP
+\fBFOLDER_REMOVE_EMPTY_EXCLUDE\fR
+Extra folder names that are never removed, ':' separated. A name that ends with
+'*' keeps every name that starts with it.
+.TP
+\fBNO_COLOR\fR
+A non-empty value switches the colors of the terminal report off.
+.SH EXIT STATUS
+.TP
+\fB0\fR
+The job ran to its end, or a help, man, tldr or version output was asked for.
+.TP
+\fB1\fR
+The given path does not exist, is not a folder, or an option is unknown.
+.SH EXAMPLES
+Remove the empty folders below the current folder, in the window:
+.PP
+.nf
+folder_remove_empty
+.fi
+.PP
+Remove them on the terminal, naming every folder that goes:
+.PP
+.nf
+folder_remove_empty \-\-no\-gui /data/archive
+.fi
+.PP
+Look first, remove nothing:
+.PP
+.nf
+folder_remove_empty \-d \-v /data/archive
+.fi
+.PP
+Keep every folder whose name starts with "keep\-" as well:
+.PP
+.nf
+FOLDER_REMOVE_EMPTY_EXCLUDE='keep\-*:downloads*' folder_remove_empty \-v \-\-no\-gui /data/archive
+.fi
+.SH SEE ALSO
+.BR rmdir (1),
+.BR find (1)
+.PP
+The program is the Python port of the shell script
+.B _folder_remove_empty
+(version 0.6.20260923165923), which it replaced.

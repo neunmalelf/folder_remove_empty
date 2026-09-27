@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=FOLDER_REMOVE_EMPTY
+GenericName=Empty folder cleaner
+Comment=Remove every empty folder below a start folder, deepest first
+Exec=folder_remove_empty
+Icon=folder_remove_empty
+Terminal=false
+StartupNotify=true
+Categories=Utility;FileTools;
+Keywords=folder;empty;directory;cleanup;rmdir;

@@ -11,8 +11,9 @@ Every case has three files in this directory:
 | `<case>.err` | stderr, the bytes exactly as written |
 | `<case>.rc`  | exit status, one decimal line with a LF (`0` or `1`) |
 
-An empty stream is an empty file, not a missing one. No file carries CR bytes
-and no file carries ESC (ANSI) bytes.
+An empty stream is an empty file, not a missing one. No file of the colourless
+capture carries CR bytes or ESC (ANSI) bytes; the `pty_*` captures appended at
+the end do carry ESC bytes (and no CR bytes either — see that section).
 
 ## Provenance
 
@@ -54,8 +55,10 @@ the shell that made them. `env -u` on a name that is not set is a no-op.
 The captures are the **colourless** form. The reporter colours a stream only
 when that stream is a character device and `NO_COLOR` is empty; here stdout and
 stderr are regular files, so the colour check fails and `paint()` returns every
-text unchanged. **The coloured form was not captured** — reproducing it needs a
-pty (`script`, `socat`), which this capture deliberately did not use. The
+text unchanged. **The coloured form is not among these cases** — it needs a pty
+(`script`, `socat`), which this capture deliberately did not use; it was
+captured separately through two ptys and lives in the `pty_*` files of the
+section `## Coloured pty captures` at the end. The
 `no_color` case (`NO_COLOR=1`) is byte-for-byte the same shape as
 `terminal_run` and proves only that the variable changes nothing when the
 stream is not a terminal; the ANSI sequence a terminal would see is in the Go
@@ -325,4 +328,181 @@ Go wording on purpose.
 
 The `.rc` files are not asserted yet: the exit status belongs to the command
 line and the reporter, which arrive in phase 3.
+
+## Coloured pty captures — `pty_*` (2026-09-27)
+
+The colourless capture above was taken with regular-file redirections, so the
+program's colour check (a character device) failed and every label came out
+plain. The six `pty_*` cases below were taken with a real pty on **each**
+stream, which is what makes the colour branch run; they pin the exact ANSI
+bytes a terminal sees and are the reference of phase 3's coloured form.
+
+### Provenance
+
+| Fact | Value |
+|---|---|
+| Go source | `~/projects/_folder_remove_empty` at `a2f8b9e82c4b6e5ff6a3973e937a0b607f9c4128` — the **same revision** as the colourless capture, dirty in exactly the same way (the same `M`/`??` list as above), untouched by this capture |
+| Build command | `cd ~/projects/_folder_remove_empty && GOTOOLCHAIN=auto nice -n 19 ionice -c 3 go build -p 1 -o /tmp/fre-go-pty ./cmd/folder_remove_empty` (`go1.27.1`, one build worker) |
+| Binary | `/tmp/fre-go-pty`, sha256 `39f4fe878c35a5f819e96b2e2e77a296c2a4893a335496485b382bbf3453bdde` — **the same sha256 as the binary of the colourless capture**, so the two captures come from the same executable bytes and not merely from the same revision; module `folder_remove_empty/cmd/folder_remove_empty v0.0.0-20260923194927-a2f8b9e82c4b+dirty`, program version `0.5.20260923194832` (the string of `info_version.out`); deleted after the capture |
+| User | uid 1000 (`fmann`), not root — the refused-removal case needs that, as above |
+| Scratch root | `/tmp/fre-pty.GMLIjB`, `mktemp -d`, five trees built by `reference/build_tree.sh`, deleted after the capture |
+| Capture environment | the shell that ran this capture had `NO_COLOR=1` set globally; every case that does not set the variable itself ran with `NO_COLOR` **and** `FOLDER_REMOVE_EMPTY_EXCLUDE` removed from the environment (the equivalent of the earlier `env -u`), so the captures do not depend on the shell that made them |
+
+### How a capture was taken
+
+Two masters and two slaves: `pty.openpty()` twice, the two slave fds handed to
+the child as `stdout` and `stderr` (`stdin=DEVNULL`), both masters read to EOF;
+`subprocess.Popen` runs in the scratch root. The exit status goes to
+`<case>.rc` as before.
+
+```python
+m_out, s_out = pty.openpty()          # stdout stream
+m_err, s_err = pty.openpty()          # stderr stream
+for fd in (s_out, s_err):
+    attrs = termios.tcgetattr(fd)
+    attrs[1] &= ~termios.OPOST        # keep the program's LF bytes as they are
+    termios.tcsetattr(fd, termios.TCSANOW, attrs)
+proc = subprocess.Popen([BIN, *argv], stdout=s_out, stderr=s_err,
+                        stdin=subprocess.DEVNULL, env=env, cwd=SCRATCH)
+# then a select() loop reads each master into its own buffer until EOF/EIO,
+# and proc.wait() gives the status
+```
+
+- **One pty per stream, never one for both.** A single pty would merge stdout
+  and stderr into one byte stream and lose the split — `script` does exactly
+  that, so `script` was not used for the capture itself.
+- **`OPOST` is cleared on both slaves.** A tty in its default line discipline
+  turns every LF the program writes into CRLF; with `OPOST` off the files hold
+  exactly the bytes the program wrote: LF and no CR. Checked by hand on a fresh
+  tree: with the default termios the first stdout line reads
+  `b'\x1b[32mremoved:\x1b[0m …/.cache/inner\r\n'`, with `OPOST` cleared it reads
+  `b'\x1b[32mremoved:\x1b[0m …/.cache/inner\n'`.
+- The child still sees a **character device** on both streams, which is the
+  only thing the colour check looks at (`colorCode` in `reporter.go`); nothing
+  else about the pty matters to the program.
+- Both masters hit EOF/EIO only after the child closed its two descriptors, so
+  no byte of either stream is cut off.
+
+### The cases
+
+`SCRATCH` below is `/tmp/fre-pty.GMLIjB`; `$T` is the tree of the row; the
+binary is `/tmp/fre-go-pty` and the working directory of every call is the
+scratch root. `env -u X` on a name that is not set is a no-op, as before.
+
+| Case | Exact command | rc | `.out`/`.err` bytes |
+|---|---|---|---|
+| `pty_run` | `env -u FOLDER_REMOVE_EMPTY_EXCLUDE -u NO_COLOR /tmp/fre-go-pty --no-gui "$SCRATCH/pty_run/tree"` | 0 | 874 / 256 |
+| `pty_dry_run` | `env -u FOLDER_REMOVE_EMPTY_EXCLUDE -u NO_COLOR /tmp/fre-go-pty --no-gui --dry-run "$SCRATCH/pty_dry_run/tree"` | 0 | 763 / 101 |
+| `pty_verbose` | `env -u FOLDER_REMOVE_EMPTY_EXCLUDE -u NO_COLOR /tmp/fre-go-pty --no-gui --verbose "$SCRATCH/pty_verbose/tree"` | 0 | 926 / 544 |
+| `pty_env_excludes` | `env -u NO_COLOR FOLDER_REMOVE_EMPTY_EXCLUDE='keep-*' /tmp/fre-go-pty --no-gui "$SCRATCH/pty_env_excludes/tree"` | 0 | 923 / 292 |
+| `pty_error` | `env -u FOLDER_REMOVE_EMPTY_EXCLUDE -u NO_COLOR /tmp/fre-go-pty --no-gui --bogus` | 1 | 0 / 2401 |
+| `pty_no_color` | `env -u FOLDER_REMOVE_EMPTY_EXCLUDE NO_COLOR=1 /tmp/fre-go-pty --no-gui "$SCRATCH/pty_no_color/tree"` | 0 | 822 / 267 |
+
+One fresh tree per mutating case, exactly as in the colourless capture:
+
+| Case | Tree (below the scratch root) | Mutated by its own run |
+|---|---|---|
+| `pty_run`, `pty_verbose`, `pty_env_excludes`, `pty_no_color` | `<case>/tree` | yes — 13 folders removed and 1 refused, except `pty_env_excludes` (12 removed, `keep-me` kept) |
+| `pty_dry_run` | `pty_dry_run/tree` | no — verified by comparing a full `path/kind/mode` listing before and after: identical |
+| `pty_error` | none | no — refused at the command line |
+
+The residual trees are the ones documented above: `pty_run`, `pty_verbose` and
+`pty_no_color` leave the same set as `terminal_run`, `pty_env_excludes` leaves
+it plus `keep-me`, and `pty_dry_run` leaves the builder tree untouched.
+
+### The escape bytes, and how to read the files
+
+The `.out`/`.err` files of this group hold **literal ESC bytes (0x1b)** where
+the program wrote them — the bytes are raw, nothing is escaped in the file
+itself. Human-readable renderings:
+
+| Renderer | What a painted stdout line looks like |
+|---|---|
+| `cat -v` | `^[[32mremoved:^[[0m /tmp/fre-pty.GMLIjB/pty_run/tree/.cache/inner` |
+| `sed -n l` | `\033[32mremoved:\033[0m …` (long lines are folded with a trailing `\`) |
+| `od -An -tx1` | `1b 5b 33 32 6d` before the label, `1b 5b 30 6d` after it |
+| `python3 -c "print(repr(open(F,'rb').read()))"` | `b'\x1b[32mremoved:\x1b[0m …\n'` |
+
+| Sequence | Bytes | Paints | Painted text | Stream |
+|---|---|---|---|---|
+| `ansiGreen` `\033[32m` | `1b 5b 33 32 6d` | green | the `removed:` label | stdout |
+| `ansiYellow` `\033[33m` | `1b 5b 33 33 6d` | yellow | the `not removed:` label | stderr |
+| `ansiRed` `\033[31m` | `1b 5b 33 31 6d` | red | the `ERROR:` label | stderr |
+| `ansiOff` `\033[0m` | `1b 5b 30 6d` | — | closes every coloured run | both |
+
+**The colour wraps only the label, never the whole line and never the path.**
+The shape is `\033[32mremoved:\033[0m <absolute path>` — the escape comes
+before the label, the `ansiOff` right after it, then a plain space and the
+path. The exact first stdout line of `pty_run` is
+
+```text
+1b 5b 33 32 6d  "removed:"  1b 5b 30 6d  20  <path>  0a
+```
+
+and the exact painted stderr line of `pty_run` is
+
+```text
+\033[33mnot removed:\033[0m <tree>/readonly/inner (remove <tree>/readonly/inner: permission denied)\n
+```
+
+Lines that carry no label stay plain: `path exists:`, `start folder:`,
+`excluded, kept:`, both counters, the bare paths of a dry run and the whole
+usage text hold no ESC byte at all.
+
+Counts of ESC bytes (`grep -c $'\x1b'` counts *lines*, the table counts
+*bytes*):
+
+| Case | ESC bytes in `.out` | ESC bytes in `.err` | CR bytes |
+|---|---|---|---|
+| `pty_run` | 26 (13 painted labels × 2) | 2 (1 painted label) | 0 / 0 |
+| `pty_dry_run` | **0** | 0 | 0 / 0 |
+| `pty_verbose` | 26 | 2 | 0 / 0 |
+| `pty_env_excludes` | 24 (12 painted labels × 2) | 2 | 0 / 0 |
+| `pty_error` | 0 (stdout empty) | 2 | 0 / 0 |
+| `pty_no_color` | **0** | 0 | 0 / 0 |
+
+### What each pty case shows
+
+- **`pty_run`** — the `terminal_run` shapes with the labels painted: 13 green
+  `removed:` lines on stdout (only the labels coloured) and the closing
+  `13 empty folder(s) removed`; stderr is `path exists:`/`start folder:`, the
+  one yellow `not removed: …/readonly/inner (remove …: permission denied)`, and
+  `1 folder(s) kept`. Strip the ESC bytes and normalise the scratch prefix and
+  this file equals `terminal_run.out`, except that its case directory is called
+  `pty_run` instead of `terminal_run` and its scratch path is two bytes shorter.
+  That is where the size difference comes from: `874 = 848 − 13·7 + 13·9`, the
+  seven byte shorter path on each of the 13 lines against the 9 bytes of escape
+  each line gains.
+- **`pty_dry_run`** — 15 bare absolute paths on stdout with no label and no
+  closing counter, `path exists:`/`start folder:` on stderr, and **not one ESC
+  byte in either stream**, because the dry-run branch prints the folder without
+  `paint()`. A dry run therefore needs no colour handling at all.
+- **`pty_verbose`** — stdout as `pty_run`; stderr gains the four
+  `excluded, kept: <abs>` lines of `terminal_verbose`, and these stay **plain**:
+  the kept branch has no colour, so the counts of ESC bytes equal `pty_run`'s.
+- **`pty_env_excludes`** — 12 green `removed:` lines (no `keep-me` line: it is
+  kept by the pattern), so 24 ESC bytes; stderr as `pty_run`.
+- **`pty_error`** — stdout is an empty file; stderr starts with
+  `\033[31mERROR:\033[0m unknown option: --bogus\n` (the red label, then plain
+  text) followed by the whole usage text unpainted; rc 1.
+- **`pty_no_color`** — a real tty on both streams and `NO_COLOR=1`: **no ESC
+  byte at all** in either stream, while the shapes and the counters are exactly
+  `pty_run`'s (`removed:` plain on all 13 lines, `not removed:` plain, rc 0).
+  With a tty the variable does change the bytes, which is what this case adds
+  to `no_color` above (where the streams were files and the variable changed
+  nothing).
+
+### Checking these files without a pty
+
+Both streams can be compared against the colourless captures after removing the
+colour: strip `\033[32m`, `\033[33m`, `\033[31m` and `\033[0m` and normalise the
+scratch prefix, then only the case directory name differs (`pty_run` against
+`terminal_run`).
+
+```bash
+sed -e 's|/tmp/fre-pty.GMLIjB|@SCRATCH@|g' -e 's/\x1b\[[0-9;]*m//g' pty_run.out
+```
+
+`grep -c $'\x1b' pty_dry_run.out pty_no_color.out` must print `0` for both: the
+dry run and the `NO_COLOR` run are the two cases that carry no escapes at all.
 

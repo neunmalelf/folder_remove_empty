@@ -1,0 +1,8 @@
+path exists: /tmp/fre-pty.GMLIjB/pty_verbose/tree
+start folder: /tmp/fre-pty.GMLIjB/pty_verbose/tree
+excluded, kept: /tmp/fre-pty.GMLIjB/pty_verbose/tree/.cache
+excluded, kept: /tmp/fre-pty.GMLIjB/pty_verbose/tree/2026-09-23_backup
+excluded, kept: /tmp/fre-pty.GMLIjB/pty_verbose/tree/ZZZZ-old
+excluded, kept: /tmp/fre-pty.GMLIjB/pty_verbose/tree/data !!! missing !!! here
+[33mnot removed:[0m /tmp/fre-pty.GMLIjB/pty_verbose/tree/readonly/inner (remove /tmp/fre-pty.GMLIjB/pty_verbose/tree/readonly/inner: permission denied)
+1 folder(s) kept

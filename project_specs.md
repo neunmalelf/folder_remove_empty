@@ -418,3 +418,24 @@ Behavior:
   patterns) are never removed on their own.
 - Dry run changes nothing on disk.
 - Closing the window stops a running job; no updates leak after close.
+
+---
+
+## 12. Settings file
+
+- The window remembers its state in
+  `~/.config/folder_remove_empty/folder_remove_empty.conf`, an INI file.
+- `[window]` carries the saved size and position as `width`, `height`,
+  `x` and `y`.
+- `[options]` carries `dry_run`, `verbose`, `excludes`, `history_filter`
+  and `dark` — the state of the window controls of the last run.
+- A saved value is a pre-fill only: a command-line option beats the
+  settings file, and the settings file beats the built-in default.
+- The window is the only writer, and it writes on close — the `Exit`
+  button and the close button of the window manager. Terminal runs and
+  the informational commands (`--help`, `--version`, `--print-man`,
+  `--print-tldr`) never write the file.
+- A settings file that cannot be read is treated as a missing one and
+  yields the built-in defaults; a settings file that cannot be written is
+  left as it was.
+- Neither case aborts a run or blocks the close of the window.

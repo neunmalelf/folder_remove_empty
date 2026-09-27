@@ -1,0 +1,49 @@
+[31mERROR:[0m unknown option: --bogus
+Usage: folder_remove_empty [OPTIONS] [PATH]
+
+Remove every empty folder below PATH, deepest first. The start folder itself
+is never removed, only the folders below it. Without arguments the window
+opens, pre-filled with PATH and the options below.
+
+Options:
+  -d, --dryrun     Print the folders that would be removed and remove nothing
+  -v, --verbose    Report every kept folder that was left in place
+      --no-gui     Work on the terminal instead of opening the window
+      --print-man  Print the man page (roff) and exit
+      --print-tldr Print the tldr page (markdown) and exit
+      --version    Print the program version and exit
+  -h, --help       Print this help and exit
+
+Arguments:
+  PATH             Folder to scan (default: the current folder)
+
+The window offers the same settings:
+  Start path       Folder to scan, checked against the file system as you type;
+                   the button behind the field asks for a folder
+  Dry run          The option -d
+  Verbose          The option -v
+  Extra excludes   Folder names that are never removed, ':' separated
+  Show in history  Which outcomes the history lists
+  Help             Show this text in a dialog that scrolls
+  Light/Dark mode  Switch the window between the light and the dark theme
+  Exit             Close the window, stopping a run in flight
+  Pause            Hold the run in front of the next folder, Resume lets it go
+  (Re)start        Start the job, or stop the running one and start it over
+  Current folder   The folder that is rated or removed right now
+  History          Every folder this session worked on, with its outcome
+
+Kept:
+  Never removed: .Trash-1000, .cache, System Volume Information, $RECYCLE.BIN
+  (with or without the leading dot), names starting with ZZZZ, names starting
+  with four digits and names holding "!!! MISSING !!!" in any letter case.
+  Their empty subfolders are still removed, the kept folder itself goes only
+  with a parent that is empty apart from empty kept folders.
+
+Environment Variables:
+  FOLDER_REMOVE_EMPTY_EXCLUDE   Extra names that are never removed,
+                           ':' separated, '*' at the end keeps every name that
+                           starts with it
+
+Exit Codes:
+  0   The job ran to the end (empty folders removed or listed)
+  1   The given PATH does not exist, is not a folder, or an option is unknown
