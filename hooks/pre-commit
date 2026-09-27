@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Pre-commit hook: modular check suite for folder_remove_empty.
 # Validates version stamps and skill synchronization, then runs whole-project
-# linting (ruff), type checking (mypy), the test suite, and an optional build.
+# linting (ruff), type checking (mypy), the test suite, a generated-page drift
+# check (man/tldr pages vs. the program) and an optional build.
 #
 # Usage:
 #   Direct execution: hooks/pre-commit [OPTIONS]
@@ -18,10 +19,11 @@
 #   SKIP_RUFF=1               Skip whole-project ruff linting
 #   SKIP_MYPY=1               Skip mypy type checking
 #   SKIP_TESTS=1              Skip test suite execution
+#   SKIP_DOCS=1               Skip generated man/tldr page drift validation
 #   SKIP_BUILD=1              Skip build validation
 #   PRE_COMMIT_BUILD=1        Enable standalone build verification (_build)
 
-__VERSION__="3.0.20260927111114Z"
+__VERSION__="3.1.20260927162248Z"
 
 set -euo pipefail
 
@@ -133,7 +135,74 @@ module_tests() {
     return 0
 }
 
-# Module 6: Build / packaging validation (_build script)
+# Module 6: Generated documentation drift (man page, tldr page)
+# Compares '--print-man'/'--print-tldr' with the committed pages. Reads only;
+# never writes into the tree. Skips when a page or the generator is unusable so
+# it can never mask a real failure reported by another module.
+module_docs() {
+    local man_page="$ROOT/man/folder_remove_empty.1"
+    local tldr_page="$ROOT/tldr/folder_remove_empty.page.md"
+
+    if [[ ! -f "$man_page" || ! -f "$tldr_page" ]]; then
+        echo "pre-commit [docs]: man/folder_remove_empty.1 or tldr/folder_remove_empty.page.md missing - SKIPPED" >&2
+        return 0
+    fi
+
+    if ! python3 -m folder_remove_empty --print-man >/dev/null 2>&1; then
+        echo "pre-commit [docs]: the generator ('python3 -m folder_remove_empty --print-man') failed - SKIPPED" >&2
+        return 0
+    fi
+
+    echo "==> pre-commit [docs]: comparing the generated pages with the committed files..." >&2
+
+    local tmp status=0
+    if ! tmp="$(mktemp -d)"; then
+        echo "pre-commit [docs]: cannot create a temporary directory - SKIPPED" >&2
+        return 0
+    fi
+    local generated_man="$tmp/folder_remove_empty.1"
+    local generated_tldr="$tmp/folder_remove_empty.page.md"
+
+    local generator_failed=0
+    if ! python3 -m folder_remove_empty --print-man >"$generated_man" 2>/dev/null; then
+        generator_failed=1
+    fi
+    if ! python3 -m folder_remove_empty --print-tldr >"$generated_tldr" 2>/dev/null; then
+        generator_failed=1
+    fi
+
+    if [[ "$generator_failed" == "1" ]]; then
+        echo "pre-commit [docs]: the generator failed while producing a page - SKIPPED" >&2
+        rm -rf "$tmp"
+        return 0
+    fi
+
+    if ! diff -u "$man_page" "$generated_man" >"$tmp/man.diff" 2>&1; then
+        echo "" >&2
+        echo "ERROR: man/folder_remove_empty.1 drifted from 'python3 -m folder_remove_empty --print-man'." >&2
+        head -20 "$tmp/man.diff" >&2
+        status=1
+    fi
+
+    if ! diff -u "$tldr_page" "$generated_tldr" >"$tmp/tldr.diff" 2>&1; then
+        echo "" >&2
+        echo "ERROR: tldr/folder_remove_empty.page.md drifted from 'python3 -m folder_remove_empty --print-tldr'." >&2
+        head -20 "$tmp/tldr.diff" >&2
+        status=1
+    fi
+
+    rm -rf "$tmp"
+
+    if [[ "$status" != "0" ]]; then
+        echo "" >&2
+        echo "ERROR: Generated documentation is out of date. Commit aborted." >&2
+        echo "Run 'make man' and 'make tldr' to regenerate the pages." >&2
+        return 1
+    fi
+    return 0
+}
+
+# Module 7: Build / packaging validation (_build script)
 module_build() {
     local build_script="$ROOT/_build"
     if [[ ! -f "$build_script" ]]; then
@@ -156,7 +225,7 @@ module_build() {
     return 0
 }
 
-# Module 7: Drop-in directory modules (hooks/pre-commit.d/*.sh)
+# Module 8: Drop-in directory modules (hooks/pre-commit.d/*.sh)
 module_directory_hooks() {
     local hooks_dir="$ROOT/hooks/pre-commit.d"
     if [[ ! -d "$hooks_dir" ]]; then
@@ -180,7 +249,7 @@ module_directory_hooks() {
 
 # --- 3. Module Runner & Dispatcher -------------------------------------------
 
-MODULES=("version" "skill_sync" "ruff" "mypy" "tests" "build" "directory_hooks")
+MODULES=("version" "skill_sync" "ruff" "mypy" "tests" "docs" "build" "directory_hooks")
 
 is_module_skipped() {
     local mod="$1"
@@ -205,6 +274,7 @@ run_module() {
         ruff)            module_ruff ;;
         mypy)            module_mypy ;;
         tests)           module_tests ;;
+        docs)            module_docs ;;
         build)           module_build ;;
         directory_hooks) module_directory_hooks ;;
         *)
@@ -239,12 +309,13 @@ Modules:
   ruff                 Run 'python3 -m ruff check .' on the whole project
   mypy                 Run 'python3 -m mypy' type checking
   tests                Run test suite (./_tests --quick or python3 -m pytest tests/folder_remove_empty -q)
+  docs                 Compare the generated man/tldr pages with the program output (--print-man/--print-tldr)
   build                Run ./_build (runs when PRE_COMMIT_BUILD=1 or --run=build)
   directory_hooks      Run custom scripts in hooks/pre-commit.d/*.sh
 
 Environment Overrides:
   SKIP_HOOKS=1              Skip all pre-commit modules
-  SKIP_<MODULE>=1           Skip specific module (e.g. SKIP_TESTS=1, SKIP_RUFF=1, SKIP_MYPY=1)
+  SKIP_<MODULE>=1           Skip specific module (e.g. SKIP_TESTS=1, SKIP_RUFF=1, SKIP_MYPY=1, SKIP_DOCS=1)
   PRE_COMMIT_BUILD=1        Enable the build verification module
 EOF
             exit 0

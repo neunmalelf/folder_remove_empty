@@ -329,6 +329,32 @@ Go wording on purpose.
 The `.rc` files are not asserted yet: the exit status belongs to the command
 line and the reporter, which arrive in phase 3.
 
+## The window capture — `gui_window.txt` (2026-09-27)
+
+The fourth fidelity group is not a screenshot of the window but a *structural*
+capture of it: `gui_window.txt` records the widget tree row by row — class,
+text, the value of a field, a checkbutton's state, the selected radio, the
+placeholders, the read-only state and the empty history — taken with the fixed
+options `start_path='/tmp'`, `dry_run=True`, `excludes='keep-*'`.
+
+`tests/folder_remove_empty/test_gui_reference.py` rebuilds the window with
+exactly those options and compares the dump line by line, so any structural
+drift (a row moved, a label reworded, a control enabled too early) shows up as
+one diff. Pixel geometry, fonts and colours are deliberately left out: they
+follow the desktop theme, not this program, and the colours are already pinned
+by the `pty_*` captures and by `test_theme.py`.
+
+Regenerate the capture after an intended change with
+
+```bash
+python3 -m tests.folder_remove_empty.test_gui_reference
+```
+
+A screenshot was not committed: this machine has no window-inspection tool
+(`xwininfo`, `xdotool` and `wmctrl` are all absent), and grabbing the whole
+screen with ImageMagick's `import` would capture unrelated desktop content.
+
+
 ## Coloured pty captures — `pty_*` (2026-09-27)
 
 The colourless capture above was taken with regular-file redirections, so the

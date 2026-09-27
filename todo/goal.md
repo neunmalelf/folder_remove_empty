@@ -8,7 +8,7 @@ what the spec states in prose: the exact message shapes, the keep-list
 matching, the order of the run phases, the dry-run output and the window
 layout.
 
-Status: **all phases are implemented and green** — packaging, version identity,
+Status: **all phases are implemented, released and green** — packaging, version identity,
 engine, command line, terminal front end, generated man/tldr pages, the tkinter
 window and the persisted settings file, with the captured Go reference pinning
 the port byte for byte (colourless and coloured) and the exit codes. What
@@ -859,3 +859,27 @@ killed it (exit 124, both streams empty).
 **Q. Is the pre-commit hook installed?** → yes, `bash hooks/install.sh` was run,
 so every commit here runs `version`, `skill_sync`, `ruff`, `mypy` and `tests`
 through `./_tests --quick`.
+
+## 11. Distribution and upkeep (done)
+
+Beyond the phases, the port is wired into the desktop and the release path:
+
+- `_build` builds the standalone binary (Nuitka, one compiler job, `--lto=no`,
+  `--enable-plugin=tk-inter`, 14 MB onefile) and writes `build/SHA256SUMS` and
+  `build/release_manifest.json` next to it; `--release` tags and publishes
+  through `gh`.
+- `make install` puts a launcher in `~/sbin`, the eight icon sizes into
+  `~/.local/share/icons/hicolor/<size>x<size>/apps/` and
+  `assets/folder_remove_empty.desktop` into `~/.local/share/applications/`.
+  The entry was launched from the menu: the window came up, `gtk-launch` and
+  `gio launch` both resolved `Exec=folder_remove_empty` through `~/sbin`.
+- the pre-commit hook gained a `docs` module that fails when the committed
+  `man/` or `tldr/` page drifts from the generator — it caught the stale version
+  stamp in the man page the first time it ran, which is the point.
+- a fourth fidelity group, `reference/gui_window.txt`, dumps the window's widget
+  tree row by row (class, text, values, states) and is compared by
+  `test_gui_reference.py`; pixel geometry and fonts are left out on purpose.
+
+Upkeep that stays open by nature: extend `ChangeLog.md` and `NEWS` with every
+change, re-run `make final` before a commit, and re-stamp `__VERSION__` (and
+then `make man`) whenever the version changes, because the man page embeds it.

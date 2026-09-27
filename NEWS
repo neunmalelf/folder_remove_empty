@@ -3,9 +3,15 @@ folder_remove_empty NEWS -- history of user-visible changes.
 User-visible highlights per release. The full per-version log is in
 `ChangeLog.md`.
 
-* Version 1.0.20260927131905 (2026-09-27)
+* Version 1.0.20260927162126 (2026-09-27)
 
 ** The Python port is complete
+
+   Phase by phase: the packaging and the repository scripts of this project, the
+   engine with its keep list and its run control, the command line and the
+   terminal report, the generated man and tldr pages, the tkinter window with
+   its dialogs and its history, the settings file that remembers the window, and
+   the release plumbing (`make install`, `.desktop`, the standalone build).
 
    folder_remove_empty is now written in Python. The release brings the same
    rules as the original: the shared engine that removes empty folders deepest

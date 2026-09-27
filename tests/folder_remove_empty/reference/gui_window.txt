@@ -1,0 +1,49 @@
+title: FOLDER_REMOVE_EMPTY <VERSION>
+options: start_path='/tmp' dry_run=True
+status: 'path exists: /tmp'
+filter: 'All'
+theme: light
+Frame
+  Label 'Start path'
+  Entry
+    value='/tmp'
+    placeholder='folder to scan (default: the current folder)'
+  Button 'Browse…'
+  Label 'path exists: /tmp'
+  Frame
+    Checkbutton 'Dry run - print the folders that would be removed and remove nothing'
+      value=True
+    Checkbutton 'Verbose - report every kept folder that was left in place'
+      value=False
+  Label 'Extra excludes'
+  Entry
+    value='keep-*'
+    placeholder='names that are never removed, : separated, * at the end keeps every name starting with it'
+  Label 'Show in history'
+  Frame
+    Radiobutton 'All'
+      selected=True
+    Radiobutton 'Removed'
+      selected=False
+    Radiobutton 'Kept'
+      selected=False
+    Radiobutton 'Not removed'
+      selected=False
+  Frame
+    Button 'Help'
+    Button 'Dark mode'
+    Button 'Exit'
+    Button 'Pause'
+      state=disabled
+    Button 'Start'
+  Label 'Current folder'
+  Entry
+    value='no folder yet'
+    placeholder=None
+    state=readonly
+  Label 'History' font=bold
+  Frame
+    Scrollbar
+    Text
+      lines=1
+      state=disabled
