@@ -1,15 +1,15 @@
 """tests of the tkinter window, its dialogs and the settings it remembers.
 
 The module needs a display: it runs directly when a tkinter root can be opened,
-re-runs itself under `xvfb-run` when `$DISPLAY` is unset and `xvfb-run` is
-installed, and skips every window test otherwise (todo/goal.md §8).
+The module needs a display, and it never takes the one the user is working on:
+`test_private_display.py` re-runs the window modules under `xvfb-run`, while these
+classes skip themselves in the parent run (todo/goal.md §8). Ask for the session
+screen explicitly with `FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session`.
 """
 
 import contextlib
 import os
 import shutil
-import subprocess
-import sys
 import tempfile
 import time
 import tkinter
@@ -37,57 +37,13 @@ from remove_empty_folder_gui import (
 )
 from remove_empty_folder_theme import DARK, LIGHT
 from remove_empty_folder_version import __VERSION__, APP_NAME_VERBOSE
+from tests.folder_remove_empty import gui_display
 from tests.folder_remove_empty.testhelpers import remove_tree, tmp_tree
 
-# the marker that keeps the xvfb-run child from starting another one.
-XVFB_MARKER = "FOLDER_REMOVE_EMPTY_XVFB_RUN"
-
-
-def _display_refusal() -> str | None:
-    """probe the display by opening and closing a tkinter root
-    usage: _display_refusal
-    returns: the reason no root could be opened, None when the display works
-
-    example: _display_refusal()
-
-    """
-    try:
-        probe = tkinter.Tk()
-    except tkinter.TclError as err:
-        return str(err)
-    probe.destroy()
-    return None
-
-
-DISPLAY_REFUSAL = _display_refusal()
-XVFB_RUN = shutil.which("xvfb-run")
-INSIDE_XVFB = os.environ.get(XVFB_MARKER) == "1"
-NO_WINDOW = DISPLAY_REFUSAL or "no display"
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-@unittest.skipIf(
-    DISPLAY_REFUSAL is None or XVFB_RUN is None or INSIDE_XVFB,
-    "a display works already, xvfb-run is missing, or this is the xvfb-run child",
-)
-class XvfbRunTest(unittest.TestCase):
-    """re-run this module under xvfb-run when the environment carries no display."""
-
-    def test_the_module_passes_under_xvfb_run(self) -> None:
-        assert XVFB_RUN is not None
-        environment = dict(os.environ, **{XVFB_MARKER: "1"})
-        environment.pop("DISPLAY", None)
-        result = subprocess.run(
-            [XVFB_RUN, "-a", sys.executable, "-m", "pytest", os.path.abspath(__file__), "-q"],
-            cwd=ROOT,
-            env=environment,
-            capture_output=True,
-            text=True,
-        )
-        self.assertEqual(result.returncode, 0, result.stdout[-2000:] + result.stderr[-2000:])
-
-
-@unittest.skipIf(DISPLAY_REFUSAL is not None, NO_WINDOW)
+@unittest.skipIf(*gui_display.skip_arguments())
 class WindowTestCase(unittest.TestCase):
     """a built window on a fresh root, with a settings file inside a temp folder."""
 
@@ -612,7 +568,7 @@ class PickerTest(WindowTestCase):
         self.assertNotEqual(self.window.frame.grid_info(), {})
 
 
-@unittest.skipIf(DISPLAY_REFUSAL is not None, NO_WINDOW)
+@unittest.skipIf(*gui_display.skip_arguments())
 class RunGuiTest(unittest.TestCase):
     """run_gui builds the window of spec §7.1 and returns 0."""
 

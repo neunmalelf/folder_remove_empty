@@ -1,0 +1,42 @@
+# The repository checks on GitHub: the same sequence the pre-commit hook runs.
+name: checks
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # actions/checkout, major tag v5 (latest release of that line: v5.1.0)
+      # https://github.com/actions/checkout/releases/tag/v5.1.0
+      - uses: actions/checkout@v5
+
+      # actions/setup-python, major tag v6 (latest release of that line: v6.3.0)
+      # https://github.com/actions/setup-python/releases/tag/v6.3.0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      # tkinter is the window, xvfb-run gives the window tests a display.
+      - name: Install tkinter and Xvfb
+        run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb
+
+      - name: Install the package with the dev tools
+        run: python3 -m pip install -e '.[dev]'
+
+      # The suite includes the private-display guard, which re-runs the
+      # window modules under xvfb-run.
+      - name: Run the test suite
+        run: python3 -m pytest -q
+
+      - name: Lint with ruff
+        run: python3 -m ruff check .
+
+      - name: Type-check with mypy
+        run: python3 -m mypy

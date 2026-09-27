@@ -1,0 +1,8 @@
+# Pinned copy of the `dev` extra of pyproject.toml (pytest, ruff, mypy,
+# nuitka). Use it only for a pinned environment, e.g. to reproduce the
+# checks with the versions this repository was verified against; the extra
+# itself stays unpinned.
+mypy==2.3.1
+nuitka==4.2.1
+pytest==9.1.1
+ruff==0.16.5

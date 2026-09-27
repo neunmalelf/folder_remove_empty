@@ -9,8 +9,11 @@ See `.agentrules` for the project rules and the "Agent Skills Sync Rule".
 conventions.
 
 The pre-commit hook (`hooks/pre-commit`, installed with `bash hooks/install.sh`)
-opens the window for its `gui` module, so it needs a display or `xvfb-run`;
-`SKIP_GUI=1` bypasses that module and `SKIP_HOOKS=1` the whole hook. Its `docs`
+opens the window for its `gui` module on a **private Xvfb display**, never on the
+session screen (opening a window on the screen the user is working on flashes
+their desktop and steals the focus). `FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session`
+asks for the session display, `SKIP_GUI=1` bypasses that module and
+`SKIP_HOOKS=1` the whole hook. Its `docs`
 module fails when the committed man page or tldr page drifted from the program —
 run `make man` and `make tldr` after a version re-stamp.
 

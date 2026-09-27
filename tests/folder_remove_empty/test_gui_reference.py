@@ -18,7 +18,7 @@ from remove_empty_folder_config import SavedSettings
 from remove_empty_folder_core import Options
 from remove_empty_folder_gui import MainWindow
 from remove_empty_folder_version import __VERSION__, APP_NAME_VERBOSE
-from tests.folder_remove_empty.test_gui import DISPLAY_REFUSAL, NO_WINDOW
+from tests.folder_remove_empty import gui_display
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = os.path.join(HERE, "reference", "gui_window.txt")
@@ -133,7 +133,7 @@ def capture() -> str:
         root.destroy()
 
 
-@unittest.skipIf(DISPLAY_REFUSAL is not None, NO_WINDOW)
+@unittest.skipIf(*gui_display.skip_arguments())
 class WindowStructureTest(unittest.TestCase):
     """the committed structure of the window matches the built window."""
 

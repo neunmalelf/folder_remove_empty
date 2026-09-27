@@ -21,7 +21,8 @@ bash hooks/install.sh                  # the pre-commit hook
 The modules are flat files in the project root (`folder_remove_empty.py` and
 `remove_empty_folder_*.py`), the tests live in `tests/folder_remove_empty/` as
 `unittest.TestCase` classes and run under pytest. `xvfb-run` and `Xvfb` are
-optional but needed for the window checks on a machine without a display.
+recommended: the window tests always open the window on a private display, so
+they never flash the screen you are working on.
 
 ## Running the checks
 
@@ -41,8 +42,11 @@ knowing:
 
 - **`gui`** opens the window and checks its structure and that no widget is
   filled with the palette accent (a purple checkbutton or radio indicator was
-  rejected). It uses the session display and falls back to `xvfb-run -a`; with
-  neither, it skips. Bypass with `SKIP_GUI=1`.
+  rejected). The window is opened on a **private Xvfb display** — never on the
+  screen you are working on, because that steals the focus and flashes the whole
+  desktop. `FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session` asks for the session screen
+  instead, `SKIP_GUI=1` bypasses the module, and without a display and without
+  `xvfb-run` it skips.
 - **`docs`** regenerates the man page and the tldr page and compares them with
   the committed files, so a stale page fails the commit. The man page embeds
   `__VERSION__`: after re-stamping the version, run `make man` and `make tldr`.

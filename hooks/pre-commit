@@ -160,11 +160,15 @@ gui_smoke_failed() {
 }
 
 # Module 6: Window smoke (the window opens and carries the accent rule)
+#
+# The window is opened on a private Xvfb display, never on the screen the user is
+# working on: the guard in tests/folder_remove_empty/test_private_display.py runs
+# the two window modules under xvfb-run and re-runs itself there.
+# FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session asks for the session screen instead.
 module_gui() {
     local -a smoke=(
         python3 -m pytest -q
-        "tests/folder_remove_empty/test_gui.py::AccentTest"
-        "tests/folder_remove_empty/test_gui_reference.py::WindowStructureTest"
+        "tests/folder_remove_empty/test_private_display.py"
     )
 
     if [[ ! -d "$ROOT/tests/folder_remove_empty" ]]; then
@@ -172,24 +176,21 @@ module_gui() {
         return 0
     fi
 
-    if window_opens; then
-        echo "==> pre-commit [gui]: opening the window and checking the accent rule..." >&2
-        if ! "${smoke[@]}"; then
-            gui_smoke_failed
-            return 1
-        fi
+    if ! command -v xvfb-run >/dev/null 2>&1 && ! window_opens; then
+        echo "pre-commit [gui]: no display and no xvfb-run - SKIPPED" >&2
         return 0
     fi
 
-    if command -v xvfb-run >/dev/null 2>&1; then
-        echo "==> pre-commit [gui]: no display, opening the window under xvfb-run..." >&2
-        if ! xvfb-run -a "${smoke[@]}"; then
-            return "$(gui_smoke_failed)"
-        fi
-        return 0
+    if [[ "${FOLDER_REMOVE_EMPTY_GUI_DISPLAY:-}" == "session" ]]; then
+        echo "==> pre-commit [gui]: opening the window on the session display (asked for)..." >&2
+    else
+        echo "==> pre-commit [gui]: opening the window on a private display..." >&2
     fi
 
-    echo "pre-commit [gui]: no display and no xvfb-run - SKIPPED" >&2
+    if ! "${smoke[@]}"; then
+        gui_smoke_failed
+        return 1
+    fi
     return 0
 }
 
@@ -368,7 +369,7 @@ Modules:
   ruff                 Run 'python3 -m ruff check .' on the whole project
   mypy                 Run 'python3 -m mypy' type checking
   tests                Run test suite (./_tests --quick or python3 -m pytest tests/folder_remove_empty -q)
-  gui                  Open the window, check its structure and the accent rule (xvfb-run when needed)
+  gui                  Open the window on a private display, check its structure and the accent rule
   docs                 Compare the generated man/tldr pages with the program output (--print-man/--print-tldr)
   build                Run ./_build (runs when PRE_COMMIT_BUILD=1 or --run=build)
   directory_hooks      Run custom scripts in hooks/pre-commit.d/*.sh
