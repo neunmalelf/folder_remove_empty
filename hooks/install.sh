@@ -3,7 +3,7 @@
 # symlinked, so it works on Windows without developer-mode symlinks).
 # Run from anywhere inside the repo:  bash hooks/install.sh
 
-__VERSION__="1.3.20260909162500Z"
+__VERSION__="1.4.20260927111114Z"
 
 set -euo pipefail
 
@@ -14,5 +14,5 @@ cp "$ROOT/hooks/pre-commit" "$ROOT/.git/hooks/pre-commit"
 chmod +x "$ROOT/.git/hooks/pre-commit"
 
 echo "Installed pre-commit hook ($ROOT/.git/hooks/pre-commit)."
-echo "Modular hook supporting: version, ruff, mypy, tests, and build check modules."
+echo "Modular hook supporting: version, skill_sync, ruff, mypy, tests, build check modules."
 echo "Re-run 'bash hooks/install.sh' after editing hooks/pre-commit."

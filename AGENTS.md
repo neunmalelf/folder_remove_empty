@@ -11,6 +11,8 @@ See `.agentrules` for the project rules and the "Agent Skills Sync Rule".
 | Skill | Description | Load |
 |---|---|---|
 | `commit_before_changes` | Before implementing a new step from todo.md or before changing any part or module, git commit the current state with the current version. The version is a pure 14-digit YYYYMMDDhhmmss UTC timestamp (trailing Z). | always |
+| `dd-module-topics` | Every new or changed function, datastructure, enum or class in this project must go into its own source file under ddpico/ based on its topic. | always |
+| `ddtoolbox-fart` | Architecture guide for the multi-call ddpico binary, standalone applets, DirectoryCrawler, and safe file operations. | always |
 | `gemini-quota` | Displays the current session and weekly quota status formatted as (model [effort] ) s: xx% (hh:mm) \| w: xx% (d hh:mm) with color-coded percentages (green, yellow, red). | on-demand |
 | `handle_todo` | Reads todo.md in the project directory, analyzes the tasks, writes a plan.md, then implements and tests each task one by one, removing completed items from todo.md until it is empty | always |
 | `history-tracker` | Archives prompts in history/prompts/prompt_history_<TIMESTAMP>.md, changes in history/changes/change_history_<TIMESTAMP>.md, todo.md in history/todo/todo_<TIMESTAMP>.md, goals.md in history/goals/goals_<TIMESTAMP>.md, and plan.md in history/plans/plan_<TIMESTAMP>.md with unified timestamps and git commits. | on-demand |

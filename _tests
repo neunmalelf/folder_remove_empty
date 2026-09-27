@@ -1,42 +1,34 @@
 #!/bin/bash
-# _tests - run the full ddpico test suite, ruff and mypy checks.
-#   usage: ./_tests [OPTIONS] [PROGRAM]
+# _tests - run the folder_remove_empty test suite, ruff and mypy checks.
+#   usage: ./_tests [OPTIONS]
 #   options:
-#     --quick    run only the unittest suite (skip ruff and mypy)
+#     --quick    run only the test suite (skip ruff and mypy)
 #     -h, --help show this help and exit
 #     --version  show the _tests version and exit
-#   arguments:
-#     [PROGRAM]  optional standalone program name (e.g. ddpico, ddtoolbox, ddfart, ddcrawl, etc.)
 
-__VERSION__="1.9.20260917131535Z"
+__VERSION__="2.0.20260927111114Z"
 
 set -u
 set -o pipefail
 
 fail=0
 QUICK=0
-TARGET_PROGRAM=""
 
 usage() {
     cat <<EOF
-_tests v${__VERSION__} - run the ddpico checks
+_tests v${__VERSION__} - run the folder_remove_empty checks
 
-usage: ./_tests [OPTIONS] [PROGRAM]
+usage: ./_tests [OPTIONS]
 
 options:
-  --quick       run only the unittest suite (skip ruff and mypy)
+  --quick       run only the test suite (skip ruff and mypy)
   -h, --help    show this help and exit
   --version     show the _tests version and exit
 
-arguments:
-  [PROGRAM]     run tests only for a specific standalone program
-                (e.g. ddpico, ddfart, ddbak, ddmediadownloader, ddpico_lsp, ddznumber)
-
 checks (default, in order):
-  [1/4] python3 -m unittest discover -s tests[/<program>] -t .
-  [2/4] ruff check ddpico tests
-  [3/4] mypy ddpico
-  [4/4] ./_export_sync --check
+  [1/3] python3 -m pytest tests/folder_remove_empty
+  [2/3] python3 -m ruff check .
+  [3/3] python3 -m mypy
 
 exit code: 0 when all checks pass, 1 otherwise
 EOF
@@ -48,42 +40,32 @@ for arg in "$@"; do
         --version)  echo "[_tests] v${__VERSION__}"; exit 0 ;;
         --quick)    QUICK=1 ;;
         *)
-            if [ -d "tests/$arg" ]; then
-                TARGET_PROGRAM="$arg"
-            elif [ -z "$TARGET_PROGRAM" ]; then
-                echo "[_tests] unknown option or test directory: $arg" >&2
-                usage >&2
-                exit 1
-            fi
+            echo "[_tests] unknown option or argument: $arg" >&2
+            usage >&2
+            exit 1
             ;;
     esac
 done
 
 echo ""
-echo "[_tests] v${__VERSION__} - ddpico checks"
+echo "[_tests] v${__VERSION__} - folder_remove_empty checks"
 echo ""
 
-TEST_DIR="tests"
-if [ -n "$TARGET_PROGRAM" ]; then
-    TEST_DIR="tests/$TARGET_PROGRAM"
-    echo "[_tests] scoping tests to $TEST_DIR"
-fi
-
-echo "[1/4] python3 -m unittest discover -s $TEST_DIR -t ."
-if ! python3 -m unittest discover -s "$TEST_DIR" -t . 2>&1 | tail -5; then
-    echo "[_tests] unittest FAILED" >&2
+echo "[1/3] python3 -m pytest tests/folder_remove_empty"
+if ! python3 -m pytest tests/folder_remove_empty 2>&1 | tail -5; then
+    echo "[_tests] pytest FAILED" >&2
     fail=1
 fi
 echo ""
 
 if [ "$QUICK" -eq 1 ]; then
-    echo "[_tests] --quick given: skipping ruff + mypy + export sync check"
+    echo "[_tests] --quick given: skipping ruff + mypy checks"
     exit $fail
 fi
 
-echo "[2/4] ruff check ddpico tests"
+echo "[2/3] python3 -m ruff check ."
 if command -v ruff >/dev/null 2>&1; then
-    if ! ruff check ddpico tests; then
+    if ! python3 -m ruff check .; then
         echo "[_tests] ruff FAILED" >&2
         fail=1
     fi
@@ -92,25 +74,14 @@ else
 fi
 echo ""
 
-echo "[3/4] mypy ddpico"
+echo "[3/3] python3 -m mypy"
 if command -v mypy >/dev/null 2>&1; then
-    if ! mypy ddpico; then
+    if ! python3 -m mypy; then
         echo "[_tests] mypy FAILED" >&2
         fail=1
     fi
 else
     echo "[_tests] mypy not found - SKIPPED" >&2
-fi
-echo ""
-
-echo "[4/4] ./_export_sync --check"
-if [ -x "./_export_sync" ]; then
-    if ! ./_export_sync --check; then
-        echo "[_tests] export sync check FAILED" >&2
-        fail=1
-    fi
-else
-    echo "[_tests] _export_sync not found - SKIPPED" >&2
 fi
 echo ""
 

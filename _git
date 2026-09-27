@@ -1,34 +1,112 @@
 #!/usr/bin/env bash
+# _git - stage every change and commit it under a bare UTC timestamp message.
+#
+#   usage: ./_git [OPTIONS] [MESSAGE...]
+#   options:
+#     -y, --yes        commit without asking for confirmation
+#     --message=MSG    append " -- MSG" to the timestamp message
+#     push, --push     push the current branch to origin after the commit
+#     -h, --help       show this help and exit
+#     --version        show the _git version and exit
+#
+# The commit message is the bare 14-digit UTC timestamp from ~/sbin/timestamp
+# (falling back to a UTC `date` call), matching the user's commit convention.
+# Trailing MESSAGE arguments are joined and appended, so the final message is
+# "<timestamp>" or "<timestamp> -- MESSAGE".
+#
+# Without -y the staged message is shown and confirmed interactively:
+# [Y]es commits, [e]dit re-opens the message, [n]o aborts.
+#
+# Examples:
+#   ./_git                        stage, confirm, then commit "<timestamp>"
+#   ./_git -y "fix parser"        commit "<timestamp> -- fix parser" right away
+#   ./_git --message=cleanup -y   commit "<timestamp> -- cleanup"
+#   ./_git --push                 commit, then push the branch to origin
 
-__version__="0.7.20280831193028Z"
+__VERSION__="1.0.20260927111114Z"
+
+usage() {
+    cat <<EOF
+_git v${__VERSION__} - stage every change and commit it under a bare UTC timestamp message
+
+usage: ./_git [OPTIONS] [MESSAGE...]
+
+options:
+  -y, --yes        commit without asking for confirmation
+  --message=MSG    append " -- MSG" to the timestamp message
+  push, --push     push the current branch to origin after the commit
+  -h, --help       show this help and exit
+  --version        show the _git version and exit
+
+The commit message is the bare 14-digit UTC timestamp from ~/sbin/timestamp
+(falling back to UTC \`date\`), matching the user's commit convention.
+Trailing MESSAGE arguments are joined and appended as "<timestamp> -- MESSAGE".
+
+examples:
+  ./_git                        stage, confirm, then commit "<timestamp>"
+  ./_git -y "fix parser"        commit "<timestamp> -- fix parser" right away
+  ./_git --message=cleanup -y   commit "<timestamp> -- cleanup"
+  ./_git --push                 commit, then push the branch to origin
+EOF
+}
 
 # Main function to encapsulate local variables and execution logic
 main() {
+    # Parse the flags: help/version, -y/--yes, --message=MSG, push/--push.
+    # Everything else is joined into the commit message.
+    local push=0
+    local assume_yes=0
+    local message_args=()
+    local arg
+    for arg in "$@"; do
+        case "$arg" in
+            -h|--help)
+                usage
+                return 0
+                ;;
+            --version)
+                echo "_git v${__VERSION__}"
+                return 0
+                ;;
+            -y|--yes)
+                assume_yes=1
+                ;;
+            --message=*)
+                message_args+=("${arg#--message=}")
+                ;;
+            push|--push)
+                push=1
+                ;;
+            -*)
+                echo "Unknown option: $arg" >&2
+                echo "Run './_git --help' for usage." >&2
+                return 1
+                ;;
+            *)
+                message_args+=("$arg")
+                ;;
+        esac
+    done
+
     # Ensure git repository
     if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         echo "Error: Not inside a Git repository." >&2
         return 1
     fi
 
-    # Parse a leading push/--push flag: commit normally, then push to GitHub.
-    local push=0
-    local message_args=()
-    for arg in "$@"; do
-        if [[ "$arg" == "push" || "$arg" == "--push" ]]; then
-            push=1
-        else
-            message_args+=("$arg")
-        fi
-    done
-
     # Join all remaining CLI arguments as the initial commit message
     local user_message="${message_args[*]:-}"
     local timestamp
     local commit_message_final
 
-    # Timestamp helper: YYYYMMDDhhmmss
+    # Timestamp helper: bare 14-digit UTC timestamp (YYYYMMDDhhmmss).
+    # Repo convention: ~/sbin/timestamp when present, otherwise UTC `date`.
     timestamp_get() {
-        date +%Y%m%d%H%M%S
+        if [ -x "$HOME/sbin/timestamp" ]; then
+            "$HOME/sbin/timestamp"
+        else
+            date -u +%Y%m%d%H%M%S
+        fi
     }
 
     # Build final commit message from timestamp and user text
@@ -60,6 +138,26 @@ main() {
         commit_message_build
     }
 
+    # Commit the staged changes, then push when requested.
+    commit_run() {
+        if ! git commit -m "$commit_message_final"; then
+            echo "Commit failed." >&2
+            return 1
+        fi
+        if [ "$push" -eq 1 ]; then
+            # Push the current branch; set upstream on the first push.
+            local branch
+            branch="$(git rev-parse --abbrev-ref HEAD)"
+            echo "[push] pushing $branch to origin..."
+            if ! git push -u origin "$branch"; then
+                echo "[push] push FAILED (see git output above)." >&2
+                return 1
+            fi
+            echo "[push] pushed $branch to origin."
+        fi
+        return 0
+    }
+
     # Automatically stage changes if working tree is dirty
     if [[ -n "$(git status --porcelain)" ]]; then
         git add .
@@ -74,6 +172,13 @@ main() {
     # Initial message build
     commit_message_build
 
+    # -y/--yes: print the message, then commit without prompting.
+    if [ "$assume_yes" -eq 1 ]; then
+        commit_message_show
+        commit_run
+        return $?
+    fi
+
     # Interactive confirmation and edit loop
     while true; do
         commit_message_show
@@ -81,21 +186,8 @@ main() {
 
         case "$response" in
             ""|[yY]|[yY][eE][sS])
-                if ! git commit -m "$commit_message_final"; then
-                    echo "Commit failed." >&2
-                    return 1
-                fi
-                if [ "$push" -eq 1 ]; then
-                    # Push the current branch; set upstream on the first push.
-                    branch="$(git rev-parse --abbrev-ref HEAD)"
-                    echo "[push] pushing $branch to origin..."
-                    if ! git push -u origin "$branch"; then
-                        echo "[push] push FAILED (see git output above)." >&2
-                        return 1
-                    fi
-                    echo "[push] pushed $branch to origin."
-                fi
-                return 0
+                commit_run
+                return $?
                 ;;
             [eE]|[eE][dD][iI][tT])
                 commit_message_edit

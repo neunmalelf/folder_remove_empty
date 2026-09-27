@@ -1,44 +1,18 @@
 #!/usr/bin/env bash
-# _run - launch ddpico or an applet (ddfart, ddcrawl, ddbak, ddznumber) directly without installing.
+# _run - launch folder_remove_empty directly without installing.
 #
-#   ./_run                      start the interactive ddpico REPL
-#   ./_run fart [ARGS...]       run ddfart (fart/pyfart applet aliases)
-#   ./_run pyfart [ARGS...]     run ddfart (fart/pyfart applet aliases)
-#   ./_run crawl [ARGS...]      run generic directory crawler
-#   ./_run bak [ARGS...]        run ddbak backup tool
-#   ./_run datetime [ARGS...]   run dddatetime date/time tool
-#   ./_run znumber [ARGS...]    run ddznumber base-26 converter
-#   ./_run [ARGS...]            pass args straight to ddpico
+#   ./_run                      start the window (same as running with no arguments)
+#   ./_run --no-gui [PATH]      work on the terminal instead of opening a window
+#   ./_run [ARGS...]            pass any other argument straight through to the program
+#
+# Examples:
+#   ./_run --version            print the version banner and exit
+#   ./_run --no-gui ~/Downloads remove empty folders below ~/Downloads
 
-__VERSION__="1.4.20260917131535Z"
+__VERSION__="2.0.20260927111114Z"
 
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-if [ "$#" -gt 0 ]; then
-    case "$1" in
-        fart|pyfart|ddfart)
-            shift
-            exec python3 ddfart_entry.py "$@"
-            ;;
-        crawl|crawler|ddcrawl)
-            shift
-            exec python3 ddcrawl_entry.py "$@"
-            ;;
-        bak|ddbak)
-            shift
-            exec python3 ddbak_entry.py "$@"
-            ;;
-        datetime|dddatetime)
-            shift
-            exec python3 dddatetime_entry.py "$@"
-            ;;
-        znumber|ddznumber)
-            shift
-            exec python3 ddznumber_entry.py "$@"
-            ;;
-    esac
-fi
-
-exec python3 -m ddpico "$@"
+exec python3 -m folder_remove_empty "$@"

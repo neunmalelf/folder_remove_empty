@@ -1,14 +1,12 @@
 #!/bin/bash
-# _build - build ddpico standalone programs into self-contained binaries with Nuitka and optionally release via gh.
-#   usage: ./_build [OPTIONS] [PROGRAM]
+# _build - build folder_remove_empty into a self-contained binary with Nuitka and optionally release via gh.
+#   usage: ./_build [OPTIONS]
 #   options:
 #     --release     build, tag with version, and create a GitHub release via gh CLI
 #     -h, --help    show this help and exit
 #     --version     show the _build version and exit
-#   arguments:
-#     [PROGRAM]     optional specific standalone program to build (e.g. ddpico, ddfart, ddbak, ddmediadownloader, ddpico_lsp, ddcrawl, ddznumber, ddversion_get_from_filepath, ddtts)
 
-__VERSION__="2.19.20260926010714Z"
+__VERSION__="3.0.20260927111114Z"
 
 set -u
 
@@ -16,58 +14,49 @@ cd "$(dirname "$0")" || exit 1
 
 DO_RELEASE=0
 DO_PACKAGE=0
-DO_KOKORO=0
 LOW_MEMORY=0
 USE_MUSL=0
 DRY_RUN=0
 JOBS="${NUITKA_JOBS:-}"
-TARGET_PROGRAM=""
 
 # Dynamically extract project name from pyproject.toml
-PROJECT_NAME=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['name'])" 2>/dev/null || echo "ddpico")
+PROJECT_NAME=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['name'])" 2>/dev/null || echo "folder_remove_empty")
 
-# --- voice notification helpers ----------------------------------------------
+# --- notification helpers -----------------------------------------------------
 _build_ok() {
     echo ""
     echo "[_build] Build succeeded."
-    python3 -m ddpico speech "the build of project $PROJECT_NAME has finished" female 2>/dev/null \
-        || ddpico speech "the build of project $PROJECT_NAME has finished" female 2>/dev/null || true
 }
 
 _build_aborted() {
     local exit_code="${1:-1}"
     echo ""
     echo "[_build] Build aborted / failed with exit code $exit_code." >&2
-    python3 -m ddpico speech "the build of project $PROJECT_NAME aborted" male 2>/dev/null \
-        || ddpico speech "the build of project $PROJECT_NAME aborted" male 2>/dev/null || true
     exit "$exit_code"
 }
 
-# Trap user interrupts (Ctrl+C / SIGINT / SIGTERM / SIGHUP) to speak abort notification
+# Trap user interrupts (Ctrl+C / SIGINT / SIGTERM / SIGHUP) to report the abort
 trap "_build_aborted 130" INT TERM HUP
 
 # --- usage -------------------------------------------------------------------
 usage() {
     cat <<EOF
-_build v${__VERSION__} - build standalone programs defined in ddpico.programs with Nuitka
+_build v${__VERSION__} - build the standalone folder_remove_empty program with Nuitka
 
-usage: ./_build [OPTIONS] [PROGRAM]
+usage: ./_build [OPTIONS]
 
 options:
   --release             tag the current commit with the version, package checksums & manifest, and create a GitHub release
   --package, --checksums package release artifacts with SHA256SUMS and release_manifest.json
   --musl, --static-musl build standalone binary targeting musl libc (Alpine Linux)
   --dry-run             display build plan, packaging, and compilation commands without executing
-  --jobs=N, -j N        limit parallel C compiler jobs (default: 4 on multi-core, or NUITKA_JOBS env)
-  --low-memory          run Nuitka in low-memory mode (fewer compiler jobs, minimal RAM footprint)
+  --jobs=N, -j N        parallel C compiler jobs (default: 1, or NUITKA_JOBS env)
+  --low-memory          run Nuitka in low-memory mode (minimal RAM footprint)
   -h, --help            show this help and exit
   --version             show the _build version and exit
 
-arguments:
-  [PROGRAM]     build only a specific standalone program (e.g. ddpico, ddfart, ddbak, ddmediadownloader, ddpico_lsp, ddcrawl, ddznumber, ddversion_get_from_filepath, ddtts)
-
 standalone programs registry:
-$(python3 -m ddpico.programs list 2>/dev/null || echo "  (ddpico.programs unavailable)")
+  folder_remove_empty  the tkinter window / terminal folder cleaner
 
 exit code: 0 on success, 1 on failure
 EOF
@@ -77,7 +66,6 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --release)              DO_RELEASE=1; DO_PACKAGE=1; shift ;;
         --package|--checksums)  DO_PACKAGE=1; shift ;;
-        --kokoro)               DO_KOKORO=1; shift ;;
         --low-memory)           LOW_MEMORY=1; shift ;;
         --musl|--static-musl)   USE_MUSL=1; shift ;;
         --dry-run)              DRY_RUN=1; shift ;;
@@ -87,18 +75,14 @@ while [ $# -gt 0 ]; do
         -h|--help)              usage; exit 0 ;;
         --version)              echo "[_build] v${__VERSION__}"; exit 0 ;;
         -*)                     echo "[_build] unknown option: $1" >&2; usage >&2; exit 1 ;;
-        *)                      TARGET_PROGRAM="$1"; shift ;;
+        *)                      echo "[_build] unknown argument: $1" >&2; usage >&2; exit 1 ;;
     esac
 done
 
-DETECTED_CPUS=$(nproc 2>/dev/null || echo 4)
+DETECTED_CPUS=$(nproc 2>/dev/null || echo 1)
 if [ -z "$JOBS" ]; then
-    if [ "$DETECTED_CPUS" -gt 4 ]; then
-        # Default to 4 parallel jobs to leave remaining cores free for the system
-        JOBS=4
-    else
-        JOBS="$DETECTED_CPUS"
-    fi
+    # One compiler job by default: builds stay responsive on a desktop system
+    JOBS=1
 fi
 
 # Use low scheduling priority on Linux so interactive desktop / terminals never freeze
@@ -111,15 +95,16 @@ if command -v ionice >/dev/null 2>&1; then
 fi
 
 echo ""
-echo "[_build] v${__VERSION__} - standalone programs Nuitka build"
+echo "[_build] v${__VERSION__} - standalone folder_remove_empty Nuitka build"
 echo "[_build] compiler jobs: $JOBS (system CPUs: $DETECTED_CPUS)"
 if [ "$LOW_MEMORY" -eq 1 ]; then
     echo "[_build] mode: low-memory"
 fi
 echo ""
 
-# --- get version using ddpico --version-only ---------------------------------
-VERSION=$(python3 -m ddpico --version-only 2>/dev/null || sed -n "s/^version = \"(.*)\"/ /p" pyproject.toml)
+# --- get version from the version module -------------------------------------
+VERSION=$(python3 -c "import remove_empty_folder_version as v; print(v.__VERSION__)" 2>/dev/null \
+    || sed -n 's/^version = "\(.*\)"/\1/p' pyproject.toml)
 [ -n "$VERSION" ] || VERSION="unknown"
 echo "[_build] package version: $VERSION"
 
@@ -149,7 +134,8 @@ elif [ "$DRY_RUN" -eq 0 ]; then
 fi
 
 # --- platform flags ----------------------------------------------------------
-NUITKA_EXTRA="--jobs=$JOBS"
+NUITKA_TK_INTER="--enable-plugin=tk-inter"
+NUITKA_EXTRA="--jobs=$JOBS --lto=no $NUITKA_TK_INTER"
 if [ "$LOW_MEMORY" -eq 1 ]; then
     NUITKA_EXTRA="$NUITKA_EXTRA --low-memory"
 fi
@@ -194,33 +180,29 @@ install_binaries() {
     fi
 }
 
-COMMON_MODULES="--include-module=json --include-module=shutil --include-module=pathlib --include-module=fnmatch --include-module=glob --include-module=subprocess"
-
-# Query build manifest from ddpico.programs
-MANIFEST=$(python3 -m ddpico.programs build-manifest)
-if [ -z "$MANIFEST" ]; then
-    echo "[_build] ERROR: failed to obtain build manifest from ddpico.programs" >&2
-    _build_aborted 1
-fi
+# No --include-module forcing: this port is stdlib-only and imports every module
+# statically (os, pathlib, threading, queue, enum, configparser, argparse, sys,
+# tkinter), so Nuitka's own import following picks them all up. The removed list
+# was the legacy multi-program workaround for dynamically imported modules.
 
 BUILT_BINARIES=()
 RELEASE_FILES=()
 
+# Fixed build manifest: PROG_NAME|BIN_NAME|ENTRY_SCRIPT
+MANIFEST="folder_remove_empty|folder_remove_empty|folder_remove_empty.py"
+
 TOTAL=$(echo "$MANIFEST" | wc -l)
 CURRENT=0
 
-while IFS="|" read -r PROG_NAME BIN_NAME ENTRY_SCRIPT PROG_EXTRA; do
+while IFS="|" read -r PROG_NAME BIN_NAME ENTRY_SCRIPT; do
     [ -n "$PROG_NAME" ] || continue
-    if [ -n "$TARGET_PROGRAM" ] && [ "$TARGET_PROGRAM" != "$PROG_NAME" ]; then
-        continue
-    fi
     CURRENT=$((CURRENT + 1))
     TARGET_BIN="$BIN_NAME"
     if [ "$USE_MUSL" -eq 1 ]; then
         TARGET_BIN="${BIN_NAME}-musl"
-        COMPILE_CMD="$CONTAINER_RUNTIME run --rm -v \"$(pwd):/workspace$MOUNT_SUFFIX\" -w /workspace alpine:latest /bin/sh -c \"apk add --no-cache python3 py3-pip gcc musl-dev >/dev/null 2>&1 && python3 -m pip install --upgrade nuitka >/dev/null 2>&1 && python3 -m nuitka --standalone --onefile --output-dir=build --output-filename=$TARGET_BIN $COMMON_MODULES $ENTRY_SCRIPT\""
+        COMPILE_CMD="$CONTAINER_RUNTIME run --rm -v \"$(pwd):/workspace$MOUNT_SUFFIX\" -w /workspace alpine:latest /bin/sh -c \"apk add --no-cache python3 py3-pip python3-tkinter gcc musl-dev >/dev/null 2>&1 && python3 -m pip install --upgrade nuitka >/dev/null 2>&1 && python3 -m nuitka --standalone --onefile --jobs=$JOBS --lto=no $NUITKA_TK_INTER --output-dir=build --output-filename=$TARGET_BIN $ENTRY_SCRIPT\""
     else
-        COMPILE_CMD="$EXEC_PREFIX python3 -m nuitka --standalone --onefile --assume-yes-for-downloads --onefile-tempdir-spec=\"{CACHE_DIR}/ddpico/${BIN_NAME}/${VERSION}\" $NUITKA_EXTRA $PROG_EXTRA --output-dir=build --output-filename=\"$BIN_NAME\" --remove-output $COMMON_MODULES \"$ENTRY_SCRIPT\""
+        COMPILE_CMD="$EXEC_PREFIX python3 -m nuitka --standalone --onefile --assume-yes-for-downloads --onefile-tempdir-spec=\"{CACHE_DIR}/folder_remove_empty/${BIN_NAME}/${VERSION}\" $NUITKA_EXTRA --output-dir=build --output-filename=\"$BIN_NAME\" --remove-output \"$ENTRY_SCRIPT\""
     fi
 
     if [ "$DRY_RUN" -eq 1 ]; then
@@ -329,7 +311,7 @@ if [ "$DO_RELEASE" -eq 1 ]; then
         echo "[_build] creating GitHub release via gh CLI: $TAG"
         gh release create "$TAG" "${RELEASE_FILES[@]}" \
             --title "$TAG" \
-            --notes "Automated standalone binary release for ddpico suite $VERSION" || {
+            --notes "Automated standalone binary release for folder_remove_empty $VERSION" || {
             echo "[_build] WARNING: gh release create failed" >&2
         }
     fi

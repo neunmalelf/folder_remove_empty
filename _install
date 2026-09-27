@@ -1,17 +1,16 @@
 #!/bin/bash
-# _install - install or update ddpico directly into Python (no .venv needed).
-# Installs ddpico in editable mode (`pip install -e '.[dev,lsp]'`).
-# The `ddpico`, `ddpico_lsp`, `ddfart`, `ddbak`, `ddcrawl`,
-# `ddmediadownloader`, `ddznumber`, `ddversion_get_from_filepath`, and `ddtts` console scripts
-# are installed automatically. On later runs the repo is synced
-# from origin first via a guarded `git pull --ff-only`.
+# _install - install or update folder_remove_empty directly into Python (no .venv needed).
+# Installs folder_remove_empty in editable mode (`pip install -e '.[dev]'`).
+# The `folder_remove_empty` console script is installed automatically.
+# On later runs the repo is synced from origin first via a guarded
+# `git pull --ff-only`.
 #   usage: ./_install [options]
 #   options:
 #     -h, --help    show this help and exit
 #     --version     show the _install version and exit
-#   afterwards: ddpico <command> · ddfart · ddpico_lsp · ./_tests
+#   afterwards: folder_remove_empty --help · ./_tests
 
-__VERSION__="2.10.20260926185459Z"
+__VERSION__="3.0.20260927111114Z"
 
 set -u
 
@@ -20,7 +19,7 @@ cd "$(dirname "$0")"
 # --- usage -------------------------------------------------------------------
 usage() {
     cat <<EOF
-_install v${__VERSION__} - setup and update ddpico (direct install, no .venv)
+_install v${__VERSION__} - setup and update folder_remove_empty (direct install, no .venv)
 
 usage: ./_install [OPTIONS]
 
@@ -28,8 +27,8 @@ options:
   -h, --help    show this help and exit
   --version     show the _install version and exit
 
-installs:   ddpico + ddpico_lsp + ddfart + ddbak + ddcrawl + ddmediadownloader + ddznumber + ddversion_get_from_filepath + ddtts + ruff + mypy
-afterwards: run 'ddpico <command>', 'ddfart', or 'ddpico_lsp' from anywhere, and './_tests'
+installs:   folder_remove_empty (editable: python3 -m pip install -e ".[dev]") + ruff + mypy
+afterwards: run 'folder_remove_empty --help' from anywhere, and './_tests'
 
 exit code: 0 on success, 1 on failure
 EOF
@@ -44,7 +43,7 @@ case "${1:-}" in
 esac
 
 echo ""
-echo "[_install] v${__VERSION__} - ddpico setup (direct install)"
+echo "[_install] v${__VERSION__} - folder_remove_empty setup (direct install)"
 echo ""
 
 # --- sync from origin (guarded pull) ----------------------------------------
@@ -61,34 +60,28 @@ else
 fi
 
 # --- install directly via pip -----------------------------------------------
-echo "[_install] installing ddpico (editable: pip install -e '.[dev,lsp]')"
-python3 -m pip install -e ".[dev,lsp]"
+echo "[_install] installing folder_remove_empty (editable: python3 -m pip install -e \".[dev]\")"
+python3 -m pip install -e ".[dev]"
 
 # --- verify -----------------------------------------------------------------
 echo "[_install] verifying..."
-python3 -m ddpico string_trim "  installed  " || { echo "[_install] ddpico verification failed" >&2; exit 1; }
-python3 -c "import ddpico; print('ddpico', ddpico.__version__, '-', len(ddpico.COMMANDS), 'commands ready')"
+python3 -c "import remove_empty_folder_version as v; print(v.APP_NAME, v.__VERSION__)" \
+    || { echo "[_install] folder_remove_empty verification failed" >&2; exit 1; }
 
-# verify console script entry points
-for cmd in ddpico ddpico_lsp ddfart ddbak ddmediadownloader ddcrawl ddznumber ddversion_get_from_filepath ddtts; do
-    if command -v "$cmd" >/dev/null 2>&1; then
-        echo "[_install] $cmd present: $(command -v $cmd)"
-    else
-        echo "[_install] NOTICE: $cmd not currently found in PATH (ensure ~/.local/bin or Python scripts dir is in PATH)"
-    fi
-done
-
-echo "[_install] installing shell completions (bash, zsh, fish)..."
-python3 -m ddpico --install-completions
+# verify the console script entry point
+if command -v folder_remove_empty >/dev/null 2>&1; then
+    echo "[_install] folder_remove_empty present: $(command -v folder_remove_empty)"
+    folder_remove_empty --version \
+        || echo "[_install] NOTICE: folder_remove_empty not currently found in PATH (ensure ~/.local/bin or Python scripts dir is in PATH)"
+else
+    echo "[_install] NOTICE: folder_remove_empty not currently found in PATH (ensure ~/.local/bin or Python scripts dir is in PATH)"
+fi
 
 echo ""
-echo "[_install] DONE. You can now use ddpico globally without activating any venv:"
-echo "    ddpico <command>            # granular dd functions and REPL"
-echo "    ddpico <applet> [...]       # multi-call applets (fart, bak, crawler, datetime, znumber, etc.)"
-echo "    ddfart [wildcards] [find]   # find and replace text, fix pdf/ebook links"
-echo "    ddpico_lsp                  # LSP server"
+echo "[_install] DONE. You can now use folder_remove_empty globally without activating any venv:"
+echo "    folder_remove_empty [options]    # remove empty folders (see --help)"
 echo "  or in Python:"
-echo "    import ddpico"
+echo "    import remove_empty_folder_version"
 echo "  run test suite with:"
 echo "    ./_tests"
 echo ""
