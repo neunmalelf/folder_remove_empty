@@ -29,7 +29,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-__version__ = "1.2.20260926140953Z"
+__version__ = "1.3.20260927131905Z"
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -77,7 +77,7 @@ def is_facade_file(path: Path) -> bool:
 
     usage: is_facade_file <PATH>
     returns: True if path is a facade/shim module, False otherwise
-    example: is_facade_file(Path("ddpico/string.py"))  # True
+    example: is_facade_file(Path("remove_empty_folder_version.py"))  # False
     """
     try:
         src = path.read_text(encoding="utf-8", errors="replace")

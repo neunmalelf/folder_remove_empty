@@ -1,7 +1,7 @@
 ---
 name: update-docs
-description: Use after any change or addition to the ddpico code or functionality to update the usage function (ddpico/help.py), REPL commands, and README.md. Apply before committing.
-version: 1.3.20260830232840Z
+version: 1.4.20260927131905Z
+description: Use after any behaviour, CLI option, message or window change in this project to update usage() in remove_empty_folder_options.py, the generated man and tldr pages, README.md, ChangeLog.md and NEWS. Apply before committing.
 load: always
 ---
 
@@ -9,79 +9,84 @@ load: always
 
 ## Overview
 
-Every change or addition to the ddpico code, CLI options, REPL commands, and
-functionality must be reflected in the two user-facing references: the `usage()`
-output (the `ddpico -h` command list, `ddpico --help <COMMAND>`) and `README.md`.
-A new or changed function, command, CLI flag, or REPL command that is not listed
-there is undocumented. Run the checks below after every code change and update the
-references before committing.
+The help text, the two generated pages, and `README.md` are the user-facing
+references to this program; `ChangeLog.md` and `NEWS` are its history. Any
+change to a behaviour, a CLI option, a printed message, or a window control MUST
+be reflected there before committing. Undocumented behaviour is a bug: the man
+page and the tldr page are generated from the program, so a stale page is a
+stale program.
 
 ## When to use
 
-Always after adding, renaming, or changing a public function, command, module,
-CLI flag, or REPL command in the ddpico project, and before committing. Do not
-commit a code change that leaves `usage()` or `README.md` stale.
+Always after adding, renaming, or changing a behaviour, a CLI option, a printed
+message, or a window control, and before committing. Update the four places
+below in this order — the later ones quote the earlier ones.
 
 ## Checks (run in order)
 
-### 1. usage() & COMMANDS registry — every public function and meta-command must be listed
+### 1. usage() in remove_empty_folder_options.py — the single source of the help text
 
-The `usage()` output is built from `_DOC_SECTIONS` and meta-command registrations
-(`_register_repl`, `_register_pipe`, `_register_eval`, `_register_ddtiny`) in `ddpico/help.py`.
+`usage()` is the one place the help text lives. It is printed by
+`python3 -m folder_remove_empty --help` and shown by the window's help dialog,
+so both surfaces change with it.
 
-- **Topic functions**: Add every new or changed public function to the correct `_DOC_SECTIONS`
-  group (e.g. `("FILE", [...])` or `("CONFIGURATION", [...])`).
-- **Function docstrings**: Must carry a `usage:` line and optional `examples:` — `_doc_to_entry`
-  reads them to build the help entry.
-- **Re-exports**: Re-export from `ddpico/__init__.py` (in the `from .<module> import (...)` block).
-- **Meta commands & REPL**: If REPL commands or CLI flags change (e.g. `/log_on`, `/log_off`,
-  `--repllog_path`, `--configuration_file`), ensure:
-  1. The header of `usage()` in `ddpico/help.py` lists the flag and REPL commands.
-  2. `COMMANDS["repl"]` in `_register_repl()` contains updated `desc`, `usage`, and `examples`.
+- Every option the program accepts is listed with the same spelling the parser
+  accepts, in the order the parser takes them.
+- Every option entry keeps the docstring shape (first line = what-and-when,
+  `usage:`, `returns:`), because the help text is built from the option
+  docstrings — see the `skill_docstring_format` skill.
+- A window label, a dialog title, or a printed message that changes is quoted in
+  the help text; keep the wording identical.
 
 Verify with:
+
 ```bash
-python -c "from ddpico.help import usage; usage()"
+python3 -m folder_remove_empty --help
 ```
 
-### 2. README.md — describe the change with examples
+### 2. the generated man page and tldr page
 
-Update `README.md` so a reader can find and use the new functionality:
-
-- **New command group / function** → add it to the "Command groups" paragraph or relevant section.
-- **New CLI flag or meta command** → add an entry in the CLI usage overview and examples block.
-- **REPL commands** → maintain the "REPL Commands & Shortcuts" table and REPL session examples in `README.md`.
-- **New module or subsystem** → add a dedicated section describing its structure, rules, and Python/CLI examples.
-- **Version line** → keep the `- **version:**` line in sync with the package version.
-
-### 3. LSP catalog — regenerate after command/module/datastructure changes
-
-Any change to a command, module, dataclass, or enum must be reflected in the
-committed `ddpico/lsp/lsp_catalog.json` (the LSP server's vocabulary). After
-updating `help.py` / module docstrings, regenerate it:
+`man/folder_remove_empty.1` and `tldr/folder_remove_empty.page.md` are generated
+from the program, never edited by hand. Regenerate and commit both; the commands
+run the module directly, they do not need the Nuitka build:
 
 ```bash
-ddpico lsp generate ddpico/lsp/lsp_catalog.json
+python3 -m folder_remove_empty --print-man > man/folder_remove_empty.1
+python3 -m folder_remove_empty --print-tldr > tldr/folder_remove_empty.page.md
 ```
 
-`tests/test_lsp_catalog_stale.py` fails when the committed catalog diverges
-from the live package, so this step is enforced in the suite.
+### 3. README.md — describe the change with examples
 
-### 4. Verify
+Update `README.md` so a reader finds and can use the new behaviour:
+
+- a new or changed CLI option → the usage overview and the examples block,
+- a changed message, dialog, or window control → the matching feature section,
+- a new module or subsystem → a section describing its role and structure,
+- the version line → keep it in sync with the program version.
+
+### 4. ChangeLog.md and NEWS — newest first, in the file's own shape
+
+Add the entry at the top of both files; each keeps its own heading shape, so
+never invent a third one.
+
+- `ChangeLog.md`: a `## <version> - <YYYY-MM-DD>` heading, then the per-version
+  entries; the version is the UTC timestamp stamp of the change.
+- `NEWS`: a `* Version <version> (<YYYY-MM-DD>)` heading with the user-visible
+  highlight in prose below it.
+
+## Verification
 
 ```bash
-python -c "import ddpico; print(ddpico.__version__)"   # import + version
-python -m unittest discover -s tests                    # suite still green
-ruff check ddpico tests
-mypy ddpico
+python3 -m folder_remove_empty --help   # the help text shows the change
+./_tests                                # suite + ruff + mypy stay green
 ```
 
 ## Common mistakes
 
 | Mistake | Fix |
 |---|---|
-| Adding a function but not registering it in `_DOC_SECTIONS` | Add it to the matching section in `ddpico/help.py`. |
-| Adding a function but not re-exporting it from `__init__.py` | Add it to the `from .<module> import (...)` block in `ddpico/__init__.py`. |
-| Adding/changing REPL commands without updating `_register_repl` or `usage()` | Update `_register_repl` and `usage()` header in `ddpico/help.py`. |
-| Updating code without updating README.md tables and examples | Add explanations, command tables, and CLI/REPL code snippets to `README.md`. |
-| Forgetting the version bump | Apply the `update-pyproject` skill (version sync across `pyproject.toml`, `internal.py`, `__init__.py`, and `README.md`). |
+| Changing an option or message and leaving `usage()` untouched | Update `usage()` in `remove_empty_folder_options.py`; the window help dialog reads the same text. |
+| Regenerating the man/tldr page but not committing it | Commit both generated files with the code change. |
+| Updating the help text but not `README.md` | Add the option, message, or section to `README.md` too. |
+| Shipping a user-visible change with no `ChangeLog.md` / `NEWS` entry | Add the entry at the top of both files, newest first. |
+| Editing `man/` or `tldr/` by hand | Regenerate with `--print-man` / `--print-tldr`. |

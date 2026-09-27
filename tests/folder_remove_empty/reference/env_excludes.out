@@ -1,0 +1,13 @@
+removed: /tmp/fre-ref.E6hTEvVG/env_excludes/tree/.cache/inner
+removed: /tmp/fre-ref.E6hTEvVG/env_excludes/tree/2026-09-23_backup/inner
+removed: /tmp/fre-ref.E6hTEvVG/env_excludes/tree/ZZZZ-old/inner
+removed: /tmp/fre-ref.E6hTEvVG/env_excludes/tree/a/b/c
+removed: /tmp/fre-ref.E6hTEvVG/env_excludes/tree/a/b
+removed: /tmp/fre-ref.E6hTEvVG/env_excludes/tree/a
+removed: /tmp/fre-ref.E6hTEvVG/env_excludes/tree/data !!! missing !!! here/inner
+removed: /tmp/fre-ref.E6hTEvVG/env_excludes/tree/keep-me/inner
+removed: /tmp/fre-ref.E6hTEvVG/env_excludes/tree/keepboth/.cache
+removed: /tmp/fre-ref.E6hTEvVG/env_excludes/tree/keepboth
+removed: /tmp/fre-ref.E6hTEvVG/env_excludes/tree/symlink_holder/target
+removed: /tmp/fre-ref.E6hTEvVG/env_excludes/tree/withfile/empty_sub
+12 empty folder(s) removed

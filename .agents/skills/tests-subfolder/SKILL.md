@@ -1,11 +1,10 @@
 ---
 name: tests-subfolder
-version: 1.5.20260911231450Z
+version: 1.6.20260927131905Z
 description: >
-  Guarantees that all test scripts and test modules for this project live in the
-  appropriate tests/ subfolder: tests/<standalone_program>/ for every program in
-  ddpico.programs, or tests/dd<topic>/ for topic-module tests (dd-prefixed,
-  matching the ddpico module, e.g. tests/ddfiles/ for ddpico/files.py).
+  Guarantees that all test modules for this project live in the
+  tests/folder_remove_empty/ subfolder (the folder_remove_empty namespace unit)
+  and never in the project root.
 ---
 
 # Tests-subfolder skill
@@ -13,50 +12,56 @@ description: >
 ## Rule
 
 All test files and test suites for this project MUST live in the `tests/` tree,
-organized one subdirectory per namespace unit: `tests/<standalone_program>/` for
-every program registered in `ddpico.programs`, or `tests/dd<topic>/` for
-topic-module tests (named after the `ddpico/<topic>.py` module, e.g.
-`tests/ddfiles/` for `ddpico/files.py`). Every `tests/` subdirectory therefore
-maps 1:1 to a program or a module. Never place test modules in the project root.
+organized one subdirectory per namespace unit. This project has exactly one
+namespace unit - the flat module set `folder_remove_empty.py` plus
+`remove_empty_folder_*.py` - so the authoritative test directory is
+`tests/folder_remove_empty/`. Never place test modules in the project root.
 
-authoritative test directories:
-- `tests/ddpico/`: Core ddpico functions, REPL, crawler, programs registry
-- `tests/ddfiles/`: File manipulation, copy/move/rename operations, and path resolution tests (topic module `ddpico/files.py`)
-- `tests/ddfart/`: Find and Replace Text (ddfart / pyfart) tests, match, walk, rulefile, pdf/ebook
-- `tests/ddbusybox/`: Multi-call BusyBox dispatcher and applet tests
-- `tests/ddbak/`: Directory backup utility tests
-- `tests/ddmediadownloader/`: Media downloader tests
-- `tests/ddpico_lsp/`: Language Server Protocol tests
-- `tests/ddznumber/`: Base-26 bijective numeration standalone program tests
-- `tests/ddcrawl/`: Directory crawler standalone program tests
-- `tests/ddversion_get_from_filepath/`: Version extractor standalone program tests
-- `tests/ddtts/`: Kokoro TTS file-synthesis standalone program tests
+authoritative test directory:
+- `tests/folder_remove_empty/`: the version module, the option parser, the scan
+  and removal core, the report, the man/tldr generators, the configuration, the
+  terminal run control, and the tkinter window.
+
+structure:
+- `tests/__init__.py` and `tests/folder_remove_empty/__init__.py` keep both
+  directories importable, so `python3 -m unittest discover -s tests -t .` finds
+  every module.
+- one test module per unit, named `test_<unit>.py` (`test_version.py`,
+  `test_core.py`, `test_options.py`, ...), each holding `unittest.TestCase`
+  classes.
+- shared helpers (temporary-directory mixin, fixture builders) live in
+  `tests/folder_remove_empty/testhelpers.py`.
 
 ## When to apply
 
 - When you write a new test file or test suite.
-- When you add a new standalone program to `ddpico.programs`.
+- When you add a module to the project.
 - When you update or relocate existing tests.
 
-## Conventions for test scripts and modules
+## Conventions for test modules
 
-1. Place Python test modules in `tests/<standalone_program>/test_<name>.py`.
-2. Ensure test cases inherit from `unittest.TestCase` or `testutil.TmpDirTestCase`.
-3. Support running either the complete suite:
+1. Place Python test modules in `tests/folder_remove_empty/test_<unit>.py`.
+2. Test cases inherit from `unittest.TestCase` (or from a base class in
+   `testhelpers.py`); pytest collects `unittest.TestCase` subclasses, so the
+   same modules run under both runners.
+3. Both module runners MUST stay green:
    ```bash
-   ./_tests
+   python3 -m pytest
    python3 -m unittest discover -s tests -t .
    ```
-   or testing a single standalone program:
+4. The project runner wraps the suite and the static checks, and MUST stay
+   green too:
    ```bash
-   ./_tests <standalone_program>
-   python3 -m unittest discover -s tests/<standalone_program> -t .
+   ./_tests            # pytest + ruff + mypy
+   ./_tests --quick    # the test suite only
    ```
-4. For bash test suites, name them `tests/_test_<name>` with `__VERSION__` in
-   standard `Major.Minor.YYYYMMDDhhmmssZ` format (UTC timestamp, trailing Z).
+5. A test module outside `tests/` does not run: `testpaths = ["tests"]` in
+   `pyproject.toml` keeps bare pytest inside the tree, and unittest discovery
+   starts at `tests/`. Never add one in the project root.
 
 ## Verification checklist
 
-- [ ] Test module lives in `tests/<standalone_program>/`.
-- [ ] `./_tests <standalone_program>` runs green.
-- [ ] `./_tests` full suite runs green.
+- [ ] Test module lives in `tests/folder_remove_empty/`.
+- [ ] `python3 -m pytest` runs green.
+- [ ] `python3 -m unittest discover -s tests -t .` runs green.
+- [ ] `./_tests --quick` runs green.

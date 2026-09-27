@@ -1,0 +1,4 @@
+path exists: /tmp/fre-ref.E6hTEvVG/env_excludes/tree
+start folder: /tmp/fre-ref.E6hTEvVG/env_excludes/tree
+not removed: /tmp/fre-ref.E6hTEvVG/env_excludes/tree/readonly/inner (remove /tmp/fre-ref.E6hTEvVG/env_excludes/tree/readonly/inner: permission denied)
+1 folder(s) kept

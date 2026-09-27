@@ -1,8 +1,4 @@
-"""test helpers shared by the folder_remove_empty test modules.
-
-The observer fake of the engine tests joins them in phase 2, as soon as the
-Observer ABC of remove_empty_folder_core.py exists.
-"""
+"""test helpers shared by the folder_remove_empty test modules."""
 
 import contextlib
 import io
@@ -11,6 +7,8 @@ import pathlib
 import shutil
 import tempfile
 from collections.abc import Generator
+
+from remove_empty_folder_core import Action, Event, Observer, Summary
 
 
 def tmp_tree(spec: dict[str, object]) -> str:
@@ -68,3 +66,94 @@ def capture() -> Generator[tuple[io.StringIO, io.StringIO]]:
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
         yield out, err
+
+
+class FakeObserver(Observer):
+    """record the progress of one engine run and answer its checkpoints from a script
+
+    The script is read once per checkpoint: the first call answers with its
+    first value, and every call after the last value lets the run go on.
+    usage: FakeObserver([CHECKPOINTS])
+    returns: an observer fake for execute()
+
+    example: FakeObserver([True, False])
+
+    """
+
+    def __init__(self, checkpoints: list[bool] | None = None) -> None:
+        """start a fake with an empty record and an optional checkpoint script
+        usage: __init__ [CHECKPOINTS]
+        returns: nothing
+
+        example: FakeObserver([False])
+
+        """
+        self.started: str | None = None
+        self.currents: list[str] = []
+        self.events: list[Event] = []
+        self.summaries: list[Summary] = []
+        self.checkpoints: list[bool] = list(checkpoints) if checkpoints else []
+        self.answered: int = 0
+
+    def start(self, start_path: str) -> None:
+        """record the start folder of the run
+        usage: start <START_PATH>
+        returns: nothing
+
+        example: observer.start("/tmp/tree")
+
+        """
+        self.started = start_path
+
+    def current(self, folder: str) -> None:
+        """record the folder the run works on next
+        usage: current <FOLDER>
+        returns: nothing
+
+        example: observer.current("/tmp/tree/a")
+
+        """
+        self.currents.append(folder)
+
+    def done(self, event: Event) -> None:
+        """record the outcome of one folder
+        usage: done <EVENT>
+        returns: nothing
+
+        example: observer.done(Event("/tmp/tree/a", Action.REMOVED))
+
+        """
+        self.events.append(event)
+
+    def summary(self, summary: Summary) -> None:
+        """record the closing counters of the run
+        usage: summary <SUMMARY>
+        returns: nothing
+
+        example: observer.summary(Summary(start_path="/tmp/tree"))
+
+        """
+        self.summaries.append(summary)
+
+    def checkpoint(self) -> bool:
+        """answer with the next scripted value, or True once the script is used up
+        usage: checkpoint
+        returns: the scripted value, True when the script is exhausted
+
+        example: observer.checkpoint()
+
+        """
+        self.answered += 1
+        if self.answered <= len(self.checkpoints):
+            return self.checkpoints[self.answered - 1]
+        return True
+
+    def folders(self, action: Action) -> list[str]:
+        """return the folders that were reported with ACTION, in report order
+        usage: folders <ACTION>
+        returns: the folders of the matching events
+
+        example: observer.folders(Action.REMOVED)
+
+        """
+        return [event.folder for event in self.events if event.action == action]

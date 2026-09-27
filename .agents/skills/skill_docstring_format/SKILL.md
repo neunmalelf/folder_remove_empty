@@ -1,8 +1,8 @@
 ---
 name: skill_docstring_format
 description: >-
-  Enforce the ddpico docstring format on every function, class, and method: a what-and-when description, a usage: line with <REQUIRED> and [OPTIONAL] parameters, a returns: line, and an example:. Docstrings are the single source of truth for the help system (ddpico/help.py), docs/ddpico_cheatsheet.md, docs/commands.md, the LSP catalog, and README.md.
-version: 1.2.20260911211823Z
+  Enforce the folder_remove_empty docstring format on every function, class, and method: a what-and-when description, a usage: line with <REQUIRED> and [OPTIONAL] parameters, a returns: line, and an example:. Docstrings feed the usage() help text (remove_empty_folder_options.py), the generated man page and tldr page, and README.md.
+version: 1.3.20260927131905Z
 load: always
 ---
 
@@ -10,15 +10,15 @@ load: always
 
 ## Purpose
 
-Every function, class, and class function (method) in `ddpico/*.py` carries a
+Every function, class, and class function (method) in the project's top-level
+modules (`folder_remove_empty.py` and `remove_empty_folder_*.py`) carries a
 docstring in one fixed format, written for two readers at once:
 
 - **Humans** — a reader sees what a callable does, *when* it does it, how to
   call it, what it returns, and a concrete example, without opening the body.
 - **AIs and tooling** — the `usage:`, `returns:`, and `example(s):` lines are
-  machine-parsed, so the docstring is the single source of truth for the help
-  system, the cheat sheet, the command reference, the LSP catalog, and the
-  README.
+  machine-parsed, so the docstring is the single source of truth for the
+  `usage()` help text, the generated man page and tldr page, and the README.
 
 ## The Format
 
@@ -65,7 +65,8 @@ closing `"""` is part of the format.
 
 ## Scope
 
-Apply the format to **every** callable in `ddpico/*.py`:
+Apply the format to **every** callable in the project's top-level modules
+(`folder_remove_empty.py` and `remove_empty_folder_*.py`):
 
 - module-level functions (public and `_`-prefixed internal ones),
 - classes,
@@ -74,7 +75,8 @@ Apply the format to **every** callable in `ddpico/*.py`:
 - dataclasses and enums.
 
 There is no exception for "obvious" or private code — the docstring is the
-contract the tooling reads.
+contract the tooling reads, and the `usage()` help text, the generated man page
+and tldr page, and `README.md` quote it.
 
 ## Classes and methods
 
@@ -111,21 +113,20 @@ def file_path_clean(path: str) -> str:
     returns: cleaned path
 
     examples:
-      file_path_clean("C:\\Users\\user/.config/ddpico/logs//repllogs\\test.log")
+      file_path_clean("C:\\Users\\user/.config/folder_remove_empty/logs//repllogs\\test.log")
       file_path_clean("./a//b/../c")"""
 ```
 
 ## Machine-parsing contract (why the format is fixed)
 
-`_doc_to_entry` in `ddpico/help.py` parses every registered function's
-docstring into a `DocEntry`:
+The docstring lines are machine-read, so they are a contract:
 
-| Docstring line | Becomes |
+| Docstring line | Feeds |
 |---|---|
-| first non-keyword line | `desc` (the help entry's description) |
-| `usage: ...` | `usage` (the help entry's invocation) |
-| `example:` / `examples:` lines | `examples` (the help entry's examples) |
-| `returns: ...` | skipped by help, used by the docs/API reference |
+| the first non-keyword line | the description in the `usage()` help text and in `README.md` |
+| `usage: ...` | the invocation line in the `usage()` help text |
+| `example:` / `examples:` lines | the examples in the `usage()` help text, the generated man page and tldr page |
+| `returns: ...` | the result contract stated for the callable in `README.md` |
 
 Consequences — never break these:
 
@@ -137,29 +138,25 @@ Consequences — never break these:
 
 ## Propagation — the docstring is the base for the docs
 
-Because the docstrings are machine-read, they are the base for every
+Because the docstring lines are machine-read, they are the base for every
 user-facing reference. After adding or changing a docstring, apply the
 `update-docs` skill, which propagates the change to:
 
-1. **The usage / help function** — `ddpico/help.py`: register the function in
-   the matching `_DOC_SECTIONS` group and re-export it from
-   `ddpico/__init__.py`; `_doc_to_entry` then feeds `usage()`,
-   `help_commands_list()`, `help_detail()`, and `ddpico --help-command <CMD>`.
-2. **The cheat sheet** — `docs/ddpico_cheatsheet.md`: the command tables
-   (`name | desc | usage`) mirror the docstring fields.
-3. **The command reference** — `docs/commands.md`: one section per command
-   with the description and a usage block.
-4. **The README** — `README.md`: command groups, examples, and the version
+1. **The `usage()` help text** — `remove_empty_folder_options.py`: it is the
+   single source of the help text printed by `python3 -m folder_remove_empty
+   --help` and shown by the window's help dialog.
+2. **The generated man page** — `man/folder_remove_empty.1`, regenerated with
+   `python3 -m folder_remove_empty --print-man`.
+3. **The generated tldr page** — `tldr/folder_remove_empty.page.md`, regenerated
+   with `python3 -m folder_remove_empty --print-tldr`.
+4. **The README** — `README.md`: the option reference, examples, and version
    line stay in sync.
-5. **The LSP catalog** — regenerate `ddpico/lsp/lsp_catalog.json`
-   (`ddpico lsp generate ddpico/lsp/lsp_catalog.json`); the catalog stores
-   `desc`, `usage`, and `examples` straight from the docstrings.
 
 Verify with:
 
 ```bash
-python -c "from ddpico.help import usage; usage()"
-python -c "from ddpico.help import help_commands_list; help_commands_list()"
+python3 -m folder_remove_empty --help
+./_tests
 ```
 
 ## Good vs bad
@@ -196,13 +193,4 @@ def file_copy(source: str, destination: str) -> None:
 | Multi-line `usage:` or `example:` | Keep each on one line — the parser reads line by line. |
 | Missing `returns:` for a value-returning function | State the result contract (`True on success, False on error`). |
 | Skipping the docstring on `_`-prefixed or "obvious" code | No exceptions — tooling and docs read every callable. |
-| Changing a docstring without propagating | Run the `update-docs` skill (help, cheat sheet, commands, README, LSP catalog). |
-
-## Related skills
-
-- **`function_and_class_comment_structure`** (merged into this skill in version
-  1.1.20260906172413Z) — the strict ordering rules that skill enforced are part
-  of this format now: the first non-keyword line is the description, `returns:`
-  MUST come before `example:` / `examples:`, and exactly one blank line
-  separates `returns:` from the example block. The "Line-by-line rules" section
-  above is the single source of truth for both.
+| Changing a docstring without propagating | Run the `update-docs` skill (`usage()` help text, man page, tldr page, README). |

@@ -3,11 +3,13 @@ folder_remove_empty NEWS -- history of user-visible changes.
 User-visible highlights per release. The full per-version log is in
 `ChangeLog.md`.
 
-* Version 0.5.20260923194832 (2026-09-23)
+* Version 1.0.20260927131905 (2026-09-27)
 
-** The buttons carry a border
+** The Python port begins
 
-   The buttons of the window - [Help] [Light mode/Dark mode] [Exit] [Pause]
-   [Start] - are drawn with the clear grey border of the other controls, so the
-   row is visible on the light background and not only by its fill.
-
+   folder_remove_empty is being rewritten in Python. This first release ships
+   the packaging, the version identity and the `--version` entry point: the
+   project installs with `pip install .` (one console script, a distribution
+   version derived from the repository stamp), and the test skeleton plus the
+   adapted repository scripts are in place. The engine and both front ends -
+   the terminal mode and the tkinter window - follow.

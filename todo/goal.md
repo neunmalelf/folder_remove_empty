@@ -8,10 +8,12 @@ what the spec states in prose: the exact message shapes, the keep-list
 matching, the order of the run phases, the dry-run output and the window
 layout.
 
-Status: phase 1 is implemented and green (packaging, version identity, entry
-point, `.gitignore`, tests skeleton, adapted repository scripts). Phases 2-7
-are open. One requirement is **not** in `project_specs.md` yet — the persisted
-settings file of §5.8 (phase 7); §9 carries the task that adds spec §12 for it.
+Status: phases 1 and 2 are implemented and green — packaging, version identity,
+entry point, `.gitignore`, tests skeleton, adapted repository scripts, and the
+whole engine with its tests, plus the captured Go reference that pins the
+engine byte for byte. Phases 3-7 are open. One requirement is **not** in
+`project_specs.md` yet — the persisted settings file of §5.8 (phase 7); §9
+carries the task that adds spec §12 for it.
 
 ---
 
@@ -65,10 +67,10 @@ adapted or deleted; nothing is left as a stub.
 
 | Existing | Action in this port |
 |---|---|
-| `pyproject.toml` | **done** — was a ddpico copy (`name = "ddpico"`, `version = "4.1.20260926190940Z"`, **12** console scripts, 20 `ddpico*` packages, ddpico `[tool.*]`, and a `[build-system]` pointing at `backend-path = ["_internal"]` while `_internal/` does not exist, so `pip install .` failed). Now: setuptools backend, distribution `folder_remove_empty`, `requires-python = ">=3.13"`, `dependencies = []`, dynamic version from the version module, one console script, `py-modules`, `[tool.pytest.ini_options]` (`testpaths`, `pythonpath`), `[tool.ruff]` (line-length 100, `py313`, E/F/I/UP/B/SIM), `[tool.mypy]`, dev extra `pytest`/`ruff`/`mypy`/`nuitka`. Verified: `pip install .` in a clean venv builds `folder_remove_empty-1.0.20260927111114` and the installed console script prints the banner |
-| `README.md` | **rewrite** (phase 6) — currently a Go/Gio description (mentions `cmd/`, Gio, cgo, headless Gio tests). New: Python/tkinter documentation |
-| `ChangeLog.md`, `NEWS` | **rewrite** (phase 6) — currently the Go release history. New: the first Python release entry describing the port |
-| `Makefile` | **rewrite** (phase 6) — it is the Go Makefile (`build`, `vet`, `fmt`, `final: fmt-check vet test build man tldr`). New: the target set of §7, delegating to `_check_version`, `_skill_sync`, `_tests`, `_build`, `_install` |
+| `pyproject.toml` | **done** — was a ddpico copy (`name = "ddpico"`, `version = "4.1.20260926190940Z"`, **12** console scripts, 20 `ddpico*` packages, ddpico `[tool.*]`, and a `[build-system]` pointing at `backend-path = ["_internal"]` while `_internal/` does not exist, so `pip install .` failed). Now: setuptools backend, distribution `folder_remove_empty`, `requires-python = ">=3.13"`, `dependencies = []`, dynamic version from the version module, one console script, `py-modules`, `[tool.pytest.ini_options]` (`testpaths`, `pythonpath`), `[tool.ruff]` (line-length 100, `py313`, E/F/I/UP/B/SIM), `[tool.mypy]`, dev extra `pytest`/`ruff`/`mypy`/`nuitka`. Verified: `pip install .` in a clean venv builds `folder_remove_empty-1.0.<stamp>` (the stamp without the trailing `Z`) and the installed console script prints the banner |
+| `README.md` | **done** (phase 1 batch, re-check in phase 6) — was a Go/Gio description (mentioned `cmd/`, Gio, cgo, headless Gio tests). Now: Python/tkinter documentation with a Status block that names phase 1 as done and marks the window/terminal sections as target behaviour |
+| `ChangeLog.md`, `NEWS` | **done** (phase 1 batch) — were the Go release history. Now: `## 1.0.20260927131905 - 2026-09-27` / `* Version 1.0.20260927131905 (2026-09-27)`, naming only what exists (packaging, version identity, `--version`, tests skeleton, adapted scripts, the deletions) |
+| `Makefile` | **done** (phase 1 batch, re-check in phase 6) — was the Go Makefile (`build`, `vet`, `fmt`, `final: fmt-check vet test build man tldr`). Now the target set of §7, delegating to `_tests` and `_check_version`/`_skill_sync` |
 | `assets/icons/*.png` (16…512) + `make_icons.sh` | keep as they are; the Go `icons/` folder becomes these |
 | `assets/folder-remove-icon.svg` | keep — with the documentation site gone this is no longer a logo, it stays as the only vector original of the icon set (`make_icons.sh` draws the PNGs from scratch) |
 | `mkdocs.yml` | **deleted** — the documentation site is dropped (user decision) |
@@ -84,7 +86,7 @@ adapted or deleted; nothing is left as a stub.
 | `hooks/pre-commit`, `hooks/install.sh` | **adapted** (`3.0…`/`1.4…`) — modules `version`, `skill_sync`, `ruff`, `mypy`, `tests`, `build`, `directory_hooks`; the commands are this project's (`python3 -m ruff check .`, `python3 -m mypy`, `./_tests --quick`); the `export_sync` module and every `ddpico` path are gone. `--list-modules`, `--version` and `bash -n` verified |
 | `history/` (`changes`, `goals`, `plans`, `prompts`, `todo`, `ideas`, `tests`) | archive one snapshot per release via the `history-tracker` skill |
 | `tests/` (was empty), `tldr/` (empty), `notes/`, `scratch/`, `completions/`, `dist/`, `release/` | `tests/folder_remove_empty/` is seeded (phase 1); `tldr/` follows in phase 4; the rest stay as they are |
-| `LICENSE` (MIT), `AGENTS.md`, `.agents/skills/` | files unchanged; the generated skill index inside `AGENTS.md` was refreshed (17 skills). **Open conflict:** five of those skills (`dd-module-topics`, `ddtoolbox-fart`, `update-docs`, `update-pyproject`, `update-tests`) and the `tests-subfolder` wording still describe the ddpico package layout and are marked `always`/`on-demand` for this repository — `dd-module-topics` even demands a file per topic under `ddpico/`, which contradicts this project's flat-module design. Phase 6 prunes or rewrites them |
+| `LICENSE` (MIT), `AGENTS.md`, `.agents/skills/` | the skill tree was pruned: `dd-module-topics` and `ddtoolbox-fart` are deleted, and `tests-subfolder`, `skill_docstring_format`, `update-docs`, `update-pyproject`, `update-tests` were retargeted from the ddpico package layout to this project's flat modules, `tests/folder_remove_empty/` and Makefile targets — 15 skills left, no `always` rule contradicts the layout, and the generated index in `AGENTS.md` is regenerated by `./_skill_sync` (`--check` green). The Go tree's own `Makefile`/`README.md`/`doc.go` were left untouched |
 
 `project_specs.md` is the Go tree's copy and is identical here; it stays the
 source of truth, with the one addition of §12 (settings file) listed in §9.
@@ -118,9 +120,16 @@ folder_remove_empty_pi/
     ├── __init__.py
     └── folder_remove_empty/              # one package per namespace unit
         ├── __init__.py
-        ├── testhelpers.py                # tmp_tree(), capture(), remove_tree()
+        ├── testhelpers.py                # tmp_tree(), capture(), remove_tree(), FakeObserver
         ├── test_version.py               # done
-        └── test_<module>.py              # one per unit, phases 2-5
+        ├── test_core_scan.py             # done      (phase 2)
+        ├── test_core_keep.py             # done      (phase 2)
+        ├── test_core_mark.py             # done      (phase 2)
+        ├── test_execute.py               # done      (phase 2)
+        ├── test_run_control.py           # done      (phase 2)
+        ├── test_reference.py             # done      (phase 2, next: through TerminalReporter in phase 3)
+        ├── reference/                    # done      the Go captures, build_tree.sh, cases.md
+        └── test_<module>.py              # one per remaining unit, phases 3-5
 ```
 
 The Go files are not translated one-to-one; each becomes part of a module:
@@ -253,6 +262,12 @@ parent in place — spec §3.3, exactly like `MarkDeletes` in `scan.go`.
      `removed += 1`;
 5. `observer.summary(summary)`; return the summary.
 
+**`Event.text()` reason** — the refused-removal reason is
+`remove <path>: <strerror>` in lowercase, the shape Go's `os.Remove` prints, so
+the terminal output can be diffed against the Go reference byte for byte.
+`project_specs.md` §4 only fixes `<reason>`, so this is a free choice made for
+fidelity; `test_reference.py` pins it.
+
 **`split_excludes` / `excluded_name`** — verbatim port of `keep.go`: the fixed
 names `.Trash-1000`, `.cache`, `$RECYCLE.BIN`, `.$RECYCLE.BIN`,
 `System Volume Information`; the prefix `ZZZZ`; four leading ASCII digits; the
@@ -268,13 +283,13 @@ notifies.
 ### 5.2 `remove_empty_folder_version.py` — done (phase 1)
 
 ```python
-__VERSION__ = "1.0.20260927111114Z"          # the repository stamp
+__VERSION__ = "1.0.20260927131905Z"          # the repository stamp
 __version__ = __VERSION__.removesuffix("Z")  # PEP 440, for setuptools
 APP_NAME = "folder_remove_empty"
 APP_NAME_VERBOSE = "FOLDER_REMOVE_EMPTY"
 
 def version_banner() -> str: ...
-    # "folder_remove_empty version 1.0.20260927111114Z"
+    # "folder_remove_empty version 1.0.20260927131905Z"
 ```
 
 `__VERSION__` is the only literal. `pyproject.toml` has
@@ -573,17 +588,21 @@ Gio window is a tkinter window, the rules of the Go program are unchanged".
 `pytest` in `tests/folder_remove_empty/` (they are `unittest.TestCase`
 classes, so `python3 -m unittest discover -s tests -t .` runs them as well).
 `tests/testhelpers.py` provides `tmp_tree()` (builds a folder tree from a
-dict), `capture()` (captures stdout/stderr) and `remove_tree()`; the
-`FakeObserver` joins them with the engine in phase 2.
+dict), `capture()` (captures stdout/stderr), `remove_tree()` and the
+`FakeObserver`.
+
+The engine is split into its natural units, so the suite has 13 modules while
+the source has 9 and the Go suite has 9 `*_test.go`.
 
 | Test module | Covers |
 |---|---|
 | `test_version.py` | **done** — stamp format, banner shape, `__version__ == __VERSION__ - "Z"`, pyproject derives the version from the module, names |
+| `test_reference.py` | **done** — rebuilds the reference tree and compares the engine's two streams with the Go captures byte for byte (run, dry run, verbose, extra excludes); skips for root |
 | `test_run.py` | the `main()` exit code for every informational output and both refusals; `main()` writes nothing to the settings file for `--help` |
-| `test_core_scan.py` | a chain of nested empty folders in one `order`; a file blocks its folder; a symlink to a folder blocks its parent; an unreadable folder is not vacant; `root` is never in `order`; the order is children-first |
-| `test_core_keep.py` | every fixed name, `ZZZZ`, four-digit dates, `!!! MISSING !!!` in any case, the extras, `keep-*` prefixes, `split_excludes` dropping empty pieces |
-| `test_core_mark.py` | a kept folder stays; a kept folder goes with a removed parent; a kept folder stays when only kept folders hold the parent |
-| `test_execute.py` | the phase order of spec §2.4; `current()` once per worked folder on the dry-run **and** the removal path; a dry run removes nothing but counts; a refused removal reports the reason and skips the parent; `checkpoint()` returning `False` ends the run with `stopped`; the exact observer call sequence |
+| `test_core_scan.py` | **done** — a chain of nested empty folders in one `order`; a file blocks its folder; a symlink to a folder blocks its parent; an unreadable folder is not vacant; `root` is never in `order`; the order is children-first |
+| `test_core_keep.py` | **done** — every fixed name, `ZZZZ`, four-digit dates, `!!! MISSING !!!` in any case, the extras, `keep-*` prefixes, `split_excludes` dropping empty pieces |
+| `test_core_mark.py` | **done** — a kept folder stays; a kept folder goes with a removed parent; a kept folder stays when only kept folders hold the parent |
+| `test_execute.py` | **done** — the phase order of spec §2.4; `current()` once per worked folder on the dry-run **and** the removal path; a dry run removes nothing but counts; a refused removal reports the reason and skips the parent; `checkpoint()` returning `False` ends the run with `stopped`; the exact observer call sequence |
 | `test_run_control.py` | pause blocks, resume releases, stop ends it, pause after stop is a no-op |
 | `test_options.py` | every option, both path errors, the environment pre-fill, the `usage()` shape |
 | `test_report.py` | the stdout/stderr split, every message shape, plain paths in a dry run, no colors off a tty, `NO_COLOR`, `<n> folder(s) kept` only with refusals |
@@ -622,18 +641,34 @@ one, so `test_gui.py` runs under `xvfb-run` when `$DISPLAY` is unset **and**
 - [x] regenerate the `AGENTS.md` skill index with `./_skill_sync` and keep
       `./_skill_sync --check` green (the index was stale; the hook's
       `skill_sync` module is green again)
+- [x] prune the ddpico-only skills: `dd-module-topics` and `ddtoolbox-fart`
+      deleted, `tests-subfolder`, `skill_docstring_format`, `update-docs`,
+      `update-pyproject`, `update-tests` retargeted to this project (15 skills
+      left, `_skill_sync --check` green)
+- [x] install the pre-commit hook (`bash hooks/install.sh`), so every commit
+      runs `version`, `skill_sync`, `ruff`, `mypy` and `tests`
+- [x] capture the Go reference (`tests/folder_remove_empty/reference/`:
+      `cases.md`, `build_tree.sh`, 13 case triples) — the one fixed point the
+      port can be diffed against
 
-### Phase 2 — the engine (no GUI, no message formats)
+### Phase 2 — the engine (done)
 
-- [ ] `FolderRemoveEmptyError`, `Options`, `Action`, `Event.text()`, `Summary`
-- [ ] `resolve_start()` and its four error messages
-- [ ] `split_excludes()`, `excluded_name()`
-- [ ] `Scan` + `scan_tree()` (Lstat semantics, unreadable = not vacant)
-- [ ] `Scan.mark_deletes()` (single definition, no wrapper function)
-- [ ] the `Observer` ABC and `execute()` in the five phases, `current()` on
+- [x] `FolderRemoveEmptyError`, `Options`, `Action`, `Event.text()`, `Summary`
+- [x] `resolve_start()` and its four error messages
+- [x] `split_excludes()`, `excluded_name()`
+- [x] `Scan` + `scan_tree()` (Lstat semantics, unreadable = not vacant)
+- [x] `Scan.mark_deletes()` (single definition, no wrapper function)
+- [x] the `Observer` ABC and `execute()` in the five phases, `current()` on
       both the dry-run and the removal path
-- [ ] `RunControl` on a `Condition`
-- [ ] the engine tests are green (`_tests` runs pytest + ruff + mypy)
+- [x] `RunControl` on a `Condition`
+- [x] the engine tests are green (`_tests` runs pytest + ruff + mypy): 47 tests
+      in `test_core_scan.py`, `test_core_keep.py`, `test_core_mark.py`,
+      `test_execute.py`, `test_run_control.py`
+- [x] `Event.text()`'s refused-removal reason matches the Go wording
+      (`remove <path>: <strerror>`, lowercase), so the terminal output can be
+      compared line for line with the Go reference
+- [x] the captured Go reference (`tests/folder_remove_empty/reference/`) is
+      reproduced by `test_reference.py` byte for byte on all four run cases
 
 ### Phase 3 — command line and terminal front end
 
@@ -643,8 +678,12 @@ one, so `test_gui.py` runs under `xvfb-run` when `$DISPLAY` is unset **and**
       tty and `NO_COLOR` handling, no `sys.stdout` default at definition time
 - [ ] `folder_remove_empty.py`: wire `main()`, the exit codes of spec §5.5
 - [ ] the options, report and run tests are green
+- [ ] `test_reference.py` renders through `TerminalReporter` and `main()` and
+      asserts the captured `.rc` exit codes as well, so the terminal mode is
+      compared with the Go reference end to end
 - [ ] a manual smoke run against a scratch tree, in both modes, compared with
-      the Go binary line for line
+      the Go binary line for line (the four run cases already match — see
+      `reference/cases.md`)
 
 ### Phase 4 — generated documentation
 
@@ -676,15 +715,17 @@ one, so `test_gui.py` runs under `xvfb-run` when `$DISPLAY` is unset **and**
 
 ### Phase 6 — documentation and release
 
-- [ ] prune or rewrite the ddpico-only skills in `.agents/skills/`
-      (`dd-module-topics`, `ddtoolbox-fart`, `update-docs`, `update-pyproject`,
-      `update-tests`, and the `tests-subfolder` wording) so no `always` rule
-      contradicts the flat-module layout; then `./_skill_sync` and
-      `./_skill_sync --check`
-- [ ] `README.md` rewritten for Python/tkinter, with the settings file and the
-      Tk dialog deviation
-- [ ] `ChangeLog.md` and `NEWS` with the port release
-- [ ] `Makefile` rewritten, `make final` green
+- [x] prune or rewrite the ddpico-only skills in `.agents/skills/`
+      (`dd-module-topics` and `ddtoolbox-fart` deleted, five skills retargeted);
+      `./_skill_sync --check` green — **done early, in the phase 1 batch**
+- [ ] `README.md` reviewed for Python/tkinter, with the settings file and the
+      Tk dialog deviation — **drafted in the phase 1 batch, re-check in phase 6**
+- [x] `ChangeLog.md` and `NEWS` with the port release — **written in the
+      phase 1 batch** (entry `1.0.20260927131905`); extend with each phase
+- [x] `Makefile` rewritten (`help`, `test`, `test-quick`, `run`, `man`,
+      `tldr`, `icons`, `install`, `uninstall`, `clean`, `final`); `make final`
+      is green except the phases 4/5 generators — **written in the phase 1
+      batch**
 - [ ] `pip install .` in a clean venv, then `folder_remove_empty --help`,
       `--version`, `--print-man`, `--print-tldr` (the version half is verified
       in phase 1)
@@ -757,3 +798,27 @@ set.
 `~/.config/folder_remove_empty/folder_remove_empty.conf`, INI through
 `configparser`, written by the window on close, read as the lowest-precedence
 pre-fill.
+
+**Q. What happens to the ddpico-only skills in `.agents/skills/`?** → they are
+pruned now, not in phase 6: `dd-module-topics` (a file per callable under
+`ddpico/`) and `ddtoolbox-fart` are deleted, and `tests-subfolder`,
+`skill_docstring_format`, `update-docs`, `update-pyproject`, `update-tests` are
+retargeted to this project's flat modules, `tests/folder_remove_empty/` subtree
+and Makefile targets — 15 skills left, `./_skill_sync --check` green. A rule
+marked `always` that contradicts the code layout is worse than no rule.
+
+**Q. How is the port proven to behave like the Go program?** → the Go binary
+was built once (single compiler job, `go build -p 1 ./cmd/folder_remove_empty`)
+and its output captured into `tests/folder_remove_empty/reference/`: 13 cases
+with stdout, stderr and exit status, plus `cases.md` documenting the tree shape
+and a committed `build_tree.sh`. `test_reference.py` rebuilds that tree, runs
+the engine over it and compares both streams byte for byte — all four run cases
+match, and every stdout stream matched on the first run. The only initial
+difference was the reason text of the one refused removal; the engine was
+aligned to the Go shape (`remove <path>: <strerror>`) because
+`project_specs.md` §4 leaves the wording open and byte fidelity is the point of
+the exercise. The `.rc` codes are asserted once `main()` exists (phase 3).
+
+**Q. Is the pre-commit hook installed?** → yes, `bash hooks/install.sh` was run,
+so every commit here runs `version`, `skill_sync`, `ruff`, `mypy` and `tests`
+through `./_tests --quick`.

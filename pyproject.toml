@@ -49,7 +49,7 @@ version = {attr = "remove_empty_folder_version.__version__"}
 folder_remove_empty = "folder_remove_empty:main"
 
 [tool.setuptools]
-py-modules = ["folder_remove_empty", "remove_empty_folder_version"]
+py-modules = ["folder_remove_empty", "remove_empty_folder_core", "remove_empty_folder_version"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -71,6 +71,11 @@ select = [
 
 [tool.mypy]
 python_version = "3.13"
-files = ["folder_remove_empty.py", "remove_empty_folder_version.py", "tests"]
+files = [
+    "folder_remove_empty.py",
+    "remove_empty_folder_core.py",
+    "remove_empty_folder_version.py",
+    "tests",
+]
 # the dev tools (pytest) ship no stubs; runtime is stdlib only
 ignore_missing_imports = true
