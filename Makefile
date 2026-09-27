@@ -106,23 +106,13 @@ uninstall:
 	@echo "uninstalled: $(APP)"
 
 # Remove every build output and cache of the project.
-# Run the window checks on a private display: the tests never open a window on
-# the screen you are working on, and this target makes that explicit. With
-# xvfb-run the window modules run directly on the private server (the marker
-# tells them they are already private); without it the guard module decides.
+# Run the window checks: the policy module decides where they run (a private
+# display by default, FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session asks for yours).
 check-gui:
-	@if command -v xvfb-run >/dev/null 2>&1; then \
-		echo "== window checks on a private display =="; \
-		xvfb-run -a --server-args="-screen 0 1280x1024x24" \
-			env FOLDER_REMOVE_EMPTY_PRIVATE_DISPLAY=1 \
-			$(PYTHON) -m pytest -q \
-				tests/folder_remove_empty/test_gui.py \
-				tests/folder_remove_empty/test_gui_reference.py \
-				tests/folder_remove_empty/test_private_display.py; \
-	else \
-		echo "== no xvfb-run: the guard decides where the window opens =="; \
-		$(PYTHON) -m pytest -q tests/folder_remove_empty/test_private_display.py; \
-	fi
+	@python3 -m remove_empty_folder_display --wrap $(PYTHON) -m pytest -q \
+		tests/folder_remove_empty/test_gui.py \
+		tests/folder_remove_empty/test_gui_reference.py \
+		tests/folder_remove_empty/test_private_display.py
 
 # Verify the declared floor on demand: the whole check plus the window checks
 # on Python 3.13 inside a container (the CI interpreter). The repository is
@@ -133,7 +123,8 @@ check-313:
 		echo "check-313: podman is missing - SKIPPED (needs 'dnf install podman')"; \
 		exit 0; \
 	fi
-	@podman run --rm -v "$(CURDIR):/src:ro,z" python:3.13-slim bash -lc '\
+	@python3 -m remove_empty_folder_display --wrap \
+		podman run --rm -v "$(CURDIR):/src:ro,z" python:3.13-slim bash -lc '\
 		set -e; \
 		python3 --version; \
 		apt-get update -qq >/dev/null && apt-get install -y -qq python3-tk xvfb git make >/dev/null; \

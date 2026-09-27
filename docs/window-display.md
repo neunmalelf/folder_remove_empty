@@ -70,10 +70,18 @@ python3 -m remove_empty_folder_display --check your_script.sh
 1 with the reason when that would be the session display, and `--wrap CMD...`
 runs the command on a private display, inheriting the markers and returning its
 exit status (`--wrap --print CMD...` prints that command line instead).
+`--wrap-sh SNIPPET` does the same through `sh -c`, which is the form for a
+pipeline:
 
-One trap: `xvfb-run` re-splits the command it is given, so an inline program
-loses its quoting — `python3 -c "print('x')"` arrives as `print(x)`. Pass a
-script file (or `--wrap` a file), not a command with quoted arguments. `test_script_display_policy.py`
+```bash
+python3 -m remove_empty_folder_display --wrap-sh 'pytest -q tests | tail -3'
+```
+
+Arguments survive the wrapper untouched — quotes, spaces and stdin included — so
+`--wrap python3 -c "print('a b')"` prints `a b`, and `--wrap bash -s -- one two <
+script` hands the script's arguments over unchanged. `test_script_display_policy.py`
+pins both, and `make check-gui` and `make check-313` are built on `--wrap`, so the
+flags live in exactly one place. `test_script_display_policy.py`
 fails the suite when a new script runs the program without one of the two.
 
 ## Without `xvfb-run`

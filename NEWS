@@ -3,6 +3,18 @@ folder_remove_empty NEWS -- history of user-visible changes.
 User-visible highlights per release. The full per-version log is in
 `ChangeLog.md`.
 
+* Version 1.5.20260927201516 (2026-09-27)
+
+** The wrapper carries the checks
+
+   `make check-gui`, `make check-313` and the screenshot script no longer spell
+   out the xvfb flags: `python3 -m remove_empty_folder_display --wrap` owns them,
+   and `--wrap-sh SNIPPET` does the same for a pipeline. `make check-gui` now
+   honours `FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session`, the pre-commit hook calls
+   that target instead of branching on the display itself, and the private run
+   records the session display, so its "the window never went there" assertion
+   really runs. `_check_pins --update` pins a verified environment in one step.
+
 * Version 1.4.20260927194352 (2026-09-27)
 
 ** One command to move a check to a private display

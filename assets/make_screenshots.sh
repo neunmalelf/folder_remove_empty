@@ -15,11 +15,12 @@
 # Needs Xvfb, xvfb-run and ImageMagick. The generated PNGs are committed, so this
 # script only runs when the window changes.
 #
-# The private display is not a nicety here: the child refuses to run anywhere
-# else (`python3 -m remove_empty_folder_display --check`), so a capture can
-# never take over the screen you are working on.
+# The private display is not a nicety here: the wrapper (`--wrap`) moves the
+# capture to one, and the child refuses anything but a private display, so a
+# capture can never take over the screen you are working on. The window geometry
+# of the private server is the wrapper's (the policy module owns it).
 
-__VERSION__="1.0.20260927191235Z"
+__VERSION__="1.1.20260927201306Z"
 
 set -euo pipefail
 
@@ -29,7 +30,6 @@ WIDTH=960
 HEIGHT=720
 OFFSET_X=160
 OFFSET_Y=150
-SCREEN="1280x1024x24"
 
 for tool in xvfb-run import magick python3; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -74,16 +74,21 @@ root.after(20000, root.destroy)
 root.mainloop()
 PYEOF
 
-env FOLDER_REMOVE_EMPTY_PRIVATE_DISPLAY=1 \
-    FOLDER_REMOVE_EMPTY_SESSION_DISPLAY="${DISPLAY:-}" \
-    FOLDER_REMOVE_EMPTY_GUI_DISPLAY="${FOLDER_REMOVE_EMPTY_GUI_DISPLAY:-}" \
-    xvfb-run -a --server-args="-screen 0 $SCREEN" bash -s -- \
+python3 -m remove_empty_folder_display --wrap bash -s -- \
     "$SCRATCH" "$OUT_DIR" "$ROOT" "$WIDTH" "$HEIGHT" "$OFFSET_X" "$OFFSET_Y" <<'CHILD'
 set -euo pipefail
 
-# the same policy every other script and the test suite speak: no window on the
-# screen the user is working on
-python3 -m remove_empty_folder_display --check "assets/make_screenshots.sh"
+# The shots need a private display unconditionally (a clean desktop is the whole
+# point), so a session display is refused even when GUI_DISPLAY=session asks for
+# it elsewhere.
+display="$(python3 -m remove_empty_folder_display --print)"
+case "$display" in
+    private\ display*) ;;
+    *)
+        printf 'make_screenshots.sh: refusing %s (the shots need a private display)\n' "$display" >&2
+        exit 1
+        ;;
+esac
 
 scratch="$1"
 out="$2"

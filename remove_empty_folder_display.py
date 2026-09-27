@@ -261,6 +261,9 @@ options:
                 and its exit status is returned)
   --wrap --print CMD
                 print that command line instead of running it
+  --wrap-sh SNIPPET
+                run SNIPPET through 'sh -c' on a private display, for a
+                pipeline; --wrap-sh --print prints the command line
 
 environment:
   {POLICY}=session                    open on the session display (default: never)
@@ -294,10 +297,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             except SystemExit as status:
                 return int(status.code or 1)
             return 0
-        if argument == "--wrap":
+        if argument in ("--wrap", "--wrap-sh"):
             rest = arguments[index + 1 :]
-            if rest[:1] == ["--print"]:
-                print(shlex.join(wrap_command(rest[1:])))
+            printing = rest[:1] == ["--print"]
+            if printing:
+                rest = rest[1:]
+            if argument == "--wrap-sh":
+                if not rest:
+                    print("remove_empty_folder_display: --wrap-sh needs a snippet", file=sys.stderr)
+                    return 2
+                rest = ["sh", "-c", " ".join(rest)]
+            if printing:
+                print(shlex.join(wrap_command(rest)))
                 return 0
             return run_wrapped(rest)
         print(f"remove_empty_folder_display: unknown option {argument!r}")

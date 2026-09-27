@@ -166,14 +166,9 @@ gui_smoke_failed() {
 # working on. `make check-gui` owns that invocation (xvfb-run, the private marker
 # and the window modules); this module only decides between the two modes, so a
 # commit and the manual target check exactly the same thing.
-# FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session asks for the session screen instead.
+# FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session (read by the policy module) asks for the
+# session screen instead.
 module_gui() {
-    local -a window_modules=(
-        "tests/folder_remove_empty/test_gui.py"
-        "tests/folder_remove_empty/test_gui_reference.py"
-        "tests/folder_remove_empty/test_private_display.py"
-    )
-
     if [[ ! -d "$ROOT/tests/folder_remove_empty" ]]; then
         echo "pre-commit [gui]: tests/folder_remove_empty missing - SKIPPED" >&2
         return 0
@@ -184,16 +179,10 @@ module_gui() {
         return 0
     fi
 
-    if [[ "${FOLDER_REMOVE_EMPTY_GUI_DISPLAY:-}" == "session" ]]; then
-        echo "==> pre-commit [gui]: opening the window on the session display (asked for)..." >&2
-        if ! python3 -m pytest -q "${window_modules[@]}"; then
-            gui_smoke_failed
-            return 1
-        fi
-        return 0
-    fi
-
-    echo "==> pre-commit [gui]: opening the window on a private display (make check-gui)..." >&2
+    # `make check-gui` owns the display decision (private by default, the
+    # session screen only when FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session asks for
+    # it), so the hook does not branch on the display itself.
+    echo "==> pre-commit [gui]: window checks via make check-gui..." >&2
     if ! make -C "$ROOT" check-gui; then
         gui_smoke_failed
         return 1

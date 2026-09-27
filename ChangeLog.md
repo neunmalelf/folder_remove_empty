@@ -5,6 +5,34 @@ A version is the UTC timestamp of its change, `x.x.YYYYMMDDhhmmss`, the output o
 `~/sbin/timestamp`. The user-facing highlights per release, in prose, are in
 `NEWS`.
 
+## 1.5.20260927201516 - 2026-09-27
+
+### Added
+
+- `python3 -m remove_empty_folder_display --wrap-sh SNIPPET` runs a snippet
+  through `sh -c` on a private display, which is the form for a pipeline.
+- `./_check_pins --update` rewrites `requirements-dev.txt` to the versions that
+  are installed (comment header and order stay), so a verified environment can be
+  pinned in one step; `--strict` still fails a drifted one.
+
+### Changed
+
+- `make check-gui`, `make check-313` and `assets/make_screenshots.sh` go through
+  `--wrap`, so the xvfb flags live in `remove_empty_folder_display.py` only.
+- `make check-gui` honours `FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session` (the policy
+  module decides; the Makefile no longer hard-codes `xvfb-run`), and the
+  pre-commit `gui` module lost its own display branch: it calls the target.
+- the private run now records the session display, so the assertion that the
+  window never went there really runs (`make check-gui`: 39 passed, 1 skipped
+  instead of 38 and 2).
+- `assets/make_screenshots.sh` refuses any display that is not private, because
+  a capture needs a clean desktop; the window geometry of the private server is
+  the policy module's.
+- corrected a wrong note from 1.4: `xvfb-run` does **not** re-split the command
+  it is given. Arguments, quotes, spaces and stdin survive the wrapper (verified
+  with an inline program, a quoted argument list, a pipeline and a heredoc); the
+  suite pins the inline and pipeline forms.
+
 ## 1.4.20260927194352 - 2026-09-27
 
 ### Added

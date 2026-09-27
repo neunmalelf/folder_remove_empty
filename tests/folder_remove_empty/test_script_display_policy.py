@@ -177,8 +177,25 @@ class ScriptDisplayPolicyTest(unittest.TestCase):
         self.assertEqual(private.returncode, 0, private.stdout + private.stderr)
         self.assertEqual(private.stdout.strip(), "python3 -c 'print(1)'")
 
-        # a file, not `python3 -c`: xvfb-run re-splits a command string, so the
-        # quoting of an inline program does not survive the wrapper
+        asked = self.run_policy(
+            {**away, "FOLDER_REMOVE_EMPTY_GUI_DISPLAY": "session"},
+            ["--wrap", "--print", "python3", "-c", "print(1)"],
+        )
+        self.assertEqual(asked.returncode, 0, asked.stdout + asked.stderr)
+        self.assertEqual(asked.stdout.strip(), "python3 -c 'print(1)'")
+
+        # quotes and spaces survive the wrapper (xvfb-run receives a quoted
+        # argument list), which is what makes --wrap usable for real commands
+        quoted = self.run_policy({**away}, ["--wrap", "python3", "-c", "print('a b', 'c d')"])
+        self.assertEqual(quoted.returncode, 0, quoted.stdout + quoted.stderr)
+        self.assertEqual(quoted.stdout.strip(), "a b c d")
+
+        pipeline = self.run_policy({**away}, ["--wrap-sh", "printf 'x\\ny\\n' | wc -l"])
+        self.assertEqual(pipeline.returncode, 0, pipeline.stdout + pipeline.stderr)
+        self.assertEqual(pipeline.stdout.strip(), "2")
+
+        # the probe as a file too, so the environment and the exit status come
+        # from a real program as well
         with tempfile.TemporaryDirectory() as scratch:
             probe = os.path.join(scratch, "probe.py")
             with open(probe, "w", encoding="utf-8") as handle:

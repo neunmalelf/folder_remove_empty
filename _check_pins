@@ -7,6 +7,8 @@
 #     --strict       exit 1 on drift (default: warn only, exit 0)
 #     --quiet        print nothing when the pins match
 #     --file FILE    read the pins from FILE (default: requirements-dev.txt)
+#     --update       rewrite FILE with the installed versions (after a run that
+#                    was verified with them)
 #
 # The pins are what CI installs, so a drift between them and the interpreter you
 # are working in means a local check did not run in the verified environment.
@@ -24,6 +26,7 @@ fi
 PINS_FILE="requirements-dev.txt"
 STRICT=0
 QUIET=0
+UPDATE=0
 
 usage() {
     cat <<EOF
@@ -37,11 +40,14 @@ options:
   --strict       exit 1 on drift (default: warn only, exit 0)
   --quiet        print nothing when the pins match
   --file FILE    read the pins from FILE (default: requirements-dev.txt)
+  --update       rewrite FILE with the installed versions (after a run that was
+                 verified with them); the comment header stays
 
 examples:
   ./_check_pins                     warn when the installed tools drift
   ./_check_pins --quiet             silent unless something drifts
   ./_check_pins --strict            fail on drift (CI or a release check)
+  ./_check_pins --update            pin what is installed right now
 EOF
 }
 
@@ -61,6 +67,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --quiet)
             QUIET=1
+            shift
+            ;;
+        --update)
+            UPDATE=1
             shift
             ;;
         --file)
@@ -83,7 +93,7 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 0
 fi
 
-python3 - "$PINS_FILE" "$STRICT" "$QUIET" <<'PY'
+python3 - "$PINS_FILE" "$STRICT" "$QUIET" "$UPDATE" <<'PY'
 """compare the installed distributions with the pins of a requirements file."""
 
 import importlib.metadata
@@ -93,6 +103,7 @@ import sys
 pins_path = pathlib.Path(sys.argv[1])
 strict = sys.argv[2] == "1"
 quiet = sys.argv[3] == "1"
+update = sys.argv[4] == "1"
 
 if not pins_path.is_file():
     print(f"_check_pins: {pins_path} is missing - SKIPPED", file=sys.stderr)
@@ -106,16 +117,54 @@ for line in pins_path.read_text().splitlines():
     name, _, version = line.partition("==")
     pins[name.strip()] = version.strip()
 
+def installed(name: str) -> str | None:
+    """report the version of an installed distribution
+    usage: installed <NAME>
+    returns: the version, or None when the distribution is not installed
+
+    example: installed("pytest")
+
+    """
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+
 drift: list[tuple[str, str, str]] = []
 for name in sorted(pins):
     want = pins[name]
-    try:
-        have = importlib.metadata.version(name)
-    except importlib.metadata.PackageNotFoundError:
+    have = installed(name)
+    if have is None:
         drift.append((name, want, "not installed"))
         continue
     if have != want:
         drift.append((name, want, have))
+
+if update:
+    lines = pins_path.read_text().splitlines(keepends=True)
+    rewritten: list[str] = []
+    changes: list[str] = []
+    for line in lines:
+        stripped = line.split("#", 1)[0].strip()
+        name = stripped.partition("==")[0].strip() if "==" in stripped else ""
+        have = installed(name) if name else None
+        if not name or have is None:
+            rewritten.append(line)
+            continue
+        want = stripped.partition("==")[2].strip()
+        if have != want:
+            changes.append(f"  {name}: {want} -> {have}")
+        rewritten.append(line.replace(f"=={want}", f"=={have}", 1))
+    if not changes:
+        print(f"_check_pins: {pins_path.name} already matches the installed tools")
+        raise SystemExit(0)
+    pins_path.write_text("".join(rewritten))
+    print(f"WARNING: {pins_path.name} updated to the installed tools:", file=sys.stderr)
+    for change in changes:
+        print(change, file=sys.stderr)
+    print("  re-run the checks with these versions before committing")
+    raise SystemExit(0)
 
 if not drift:
     if not quiet:
