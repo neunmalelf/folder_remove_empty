@@ -27,7 +27,9 @@ FIXTURE = os.path.join(HERE, "reference", "gui_window.txt")
 # current folder or on the settings file of the machine that runs it
 OPTIONS = Options(start_path="/tmp", dry_run=True, excludes="keep-*")
 
-VOLATILE = (APP_NAME_VERBOSE + " " + __VERSION__,)
+# the fill options the accent must never reach (user request 2026-09-27); the
+# dump records them so a purple indicator cannot slip back in unnoticed
+COLOUR_OPTIONS = ("background", "activebackground", "selectcolor", "selectbackground")
 
 
 def _value_lines(root: tkinter.Tk, widget: tkinter.Misc, window: MainWindow) -> list[str]:
@@ -61,6 +63,10 @@ def _value_lines(root: tkinter.Tk, widget: tkinter.Misc, window: MainWindow) -> 
         state = str(widget.cget("state"))
         if state != "normal":
             lines.append(f"state={state}")
+    supported = widget.keys()
+    colours = [f"{name}={widget.cget(name)}" for name in COLOUR_OPTIONS if name in supported]
+    if colours:
+        lines.append("colors " + " ".join(colours))
     return lines
 
 

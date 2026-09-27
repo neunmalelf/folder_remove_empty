@@ -5,7 +5,7 @@ A version is the UTC timestamp of its change, `x.x.YYYYMMDDhhmmss`, the output o
 `~/sbin/timestamp`. The user-facing highlights per release, in prose, are in
 `NEWS`.
 
-## 1.0.20260927162126 - 2026-09-27
+## 1.0.20260927162713 - 2026-09-27
 
 The Python port of `folder_remove_empty`, phase by phase (the plan is
 `todo/goal.md`, the behaviour contract `project_specs.md`).
@@ -89,6 +89,14 @@ The Python port of `folder_remove_empty`, phase by phase (the plan is
   five coloured pty cases, the four refusals and the informational outputs
   through `main()`, all compared byte for byte and exit code for exit code —
   and the structural capture of the window.
+
+### Fixed
+
+- The window paints no purple fill any more (user request 2026-09-27): the
+  checkbutton and radio indicator boxes and the selection of a field take the
+  theme background and the border grey instead of the accent, and only a button
+  still gets a hover tint, in the border grey. `test_gui.py` and the structural
+  window capture assert that no widget is filled with the accent.
 
 ### Changed
 

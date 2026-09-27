@@ -29,7 +29,9 @@ class Theme:
     fg: str
     # the grey of the control borders and the separators.
     border: str
-    # the accent of the selected controls, purple in both variants.
+    # the palette keeps the accent of the Go original's contrast colour, purple
+    # in both variants; the window deliberately paints no fill with it (a purple
+    # checkbutton or radio indicator was rejected by the user on 2026-09-27).
     accent: str
     # "removed" history lines.
     success: str

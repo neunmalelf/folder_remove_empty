@@ -4,46 +4,74 @@ status: 'path exists: /tmp'
 filter: 'All'
 theme: light
 Frame
+  colors background=#ffffff
   Label 'Start path'
+    colors background=#ffffff activebackground=#ffffff
   Entry
     value='/tmp'
     placeholder='folder to scan (default: the current folder)'
+    colors background=#ffffff selectbackground=#000000
   Button 'Browse…'
+    colors background=#ffffff activebackground=#8a8a8a
   Label 'path exists: /tmp'
+    colors background=#ffffff activebackground=#ffffff
   Frame
+    colors background=#ffffff
     Checkbutton 'Dry run - print the folders that would be removed and remove nothing'
       value=True
+      colors background=#ffffff activebackground=#ffffff selectcolor=#ffffff
     Checkbutton 'Verbose - report every kept folder that was left in place'
       value=False
+      colors background=#ffffff activebackground=#ffffff selectcolor=#ffffff
   Label 'Extra excludes'
+    colors background=#ffffff activebackground=#ffffff
   Entry
     value='keep-*'
     placeholder='names that are never removed, : separated, * at the end keeps every name starting with it'
+    colors background=#ffffff selectbackground=#000000
   Label 'Show in history'
+    colors background=#ffffff activebackground=#ffffff
   Frame
+    colors background=#ffffff
     Radiobutton 'All'
       selected=True
+      colors background=#ffffff activebackground=#ffffff selectcolor=#ffffff
     Radiobutton 'Removed'
       selected=False
+      colors background=#ffffff activebackground=#ffffff selectcolor=#ffffff
     Radiobutton 'Kept'
       selected=False
+      colors background=#ffffff activebackground=#ffffff selectcolor=#ffffff
     Radiobutton 'Not removed'
       selected=False
+      colors background=#ffffff activebackground=#ffffff selectcolor=#ffffff
   Frame
+    colors background=#ffffff
     Button 'Help'
+      colors background=#ffffff activebackground=#8a8a8a
     Button 'Dark mode'
+      colors background=#ffffff activebackground=#8a8a8a
     Button 'Exit'
+      colors background=#ffffff activebackground=#8a8a8a
     Button 'Pause'
       state=disabled
+      colors background=#ffffff activebackground=#8a8a8a
     Button 'Start'
+      colors background=#ffffff activebackground=#8a8a8a
   Label 'Current folder'
+    colors background=#ffffff activebackground=#ffffff
   Entry
     value='no folder yet'
     placeholder=None
     state=readonly
+    colors background=#ffffff selectbackground=#000000
   Label 'History' font=bold
+    colors background=#ffffff activebackground=#ffffff
   Frame
+    colors background=#ffffff
     Scrollbar
+      colors background=#ffffff activebackground=#ffffff
     Text
       lines=1
       state=disabled
+      colors background=#ffffff selectbackground=#000000

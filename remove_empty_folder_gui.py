@@ -517,14 +517,24 @@ class MainWindow:
         for widget in self._widgets():
             _set_option(widget, "background", theme.bg)
             _set_option(widget, "foreground", theme.fg)
-            _set_option(widget, "activebackground", theme.accent)
             _set_option(widget, "activeforeground", theme.fg)
             _set_option(widget, "highlightbackground", theme.border)
             _set_option(widget, "highlightcolor", theme.border)
-            _set_option(widget, "selectcolor", theme.accent)
             _set_option(widget, "insertbackground", theme.fg)
             _set_option(widget, "readonlybackground", theme.bg)
             _set_option(widget, "troughcolor", theme.bg)
+            # a selected field text is painted inverted (theme foreground
+            # behind, theme background in front), never with the accent
+            _set_option(widget, "selectbackground", theme.fg)
+            _set_option(widget, "selectforeground", theme.bg)
+            # the accent is deliberately not painted as a fill: a checkbutton,
+            # a radio or a text selection with the accent background shows a
+            # purple box (user request 2026-09-27). The indicator box of a
+            # checkbutton or radio takes the theme background instead, and only
+            # a button gets a hover tint, its border grey.
+            hover = theme.border if isinstance(widget, tk.Button) else theme.bg
+            _set_option(widget, "activebackground", hover)
+            _set_option(widget, "selectcolor", theme.bg)
         for tag in self._history_tags:
             self.history_text.tag_configure(tag, foreground=importance_color(tag, self.dark))
         self.theme_button.configure(text=theme_button_label(self.dark))

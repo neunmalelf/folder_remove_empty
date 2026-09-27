@@ -3,7 +3,7 @@ folder_remove_empty NEWS -- history of user-visible changes.
 User-visible highlights per release. The full per-version log is in
 `ChangeLog.md`.
 
-* Version 1.0.20260927162126 (2026-09-27)
+* Version 1.0.20260927162713 (2026-09-27)
 
 ** The Python port is complete
 

@@ -475,10 +475,40 @@ class ThemeTest(WindowTestCase):
         self.assertEqual(str(self.window.history_text.cget("background")), DARK.bg)
         self.assertEqual(str(self.window.path_entry.cget("highlightbackground")), DARK.border)
         self.assertEqual(str(self.window.status_label.cget("foreground")), DARK.success)
-        self.assertEqual(str(self.window.help_button.cget("activebackground")), DARK.accent)
+        self.assertEqual(str(self.window.help_button.cget("activebackground")), DARK.border)
         self.assertEqual(
             str(self.window.history_text.tag_cget("removed", "foreground")), DARK.success
         )
+
+
+class AccentTest(WindowTestCase):
+    """no control is filled with the purple accent (user request 2026-09-27)."""
+
+    FILL_OPTIONS = ("background", "activebackground", "selectcolor", "selectbackground",
+                    "troughcolor")
+
+    def test_no_widget_is_filled_with_the_accent(self) -> None:
+        for dark in (False, True):
+            if dark:
+                self.window.toggle_theme()
+            theme = DARK if dark else LIGHT
+            for widget in self.window._widgets():
+                supported = widget.keys()
+                for option in self.FILL_OPTIONS:
+                    if option not in supported:
+                        continue
+                    with self.subTest(dark=dark, widget=widget.winfo_class(), option=option):
+                        self.assertNotEqual(str(widget.cget(option)), theme.accent)
+
+    def test_the_indicators_and_the_hover_are_not_the_accent(self) -> None:
+        self.assertEqual(str(self.window.dry_run_button.cget("selectcolor")), LIGHT.bg)
+        self.assertEqual(str(self.window.verbose_button.cget("selectcolor")), LIGHT.bg)
+        for button in self.window.filter_buttons:
+            with self.subTest(filter=button.cget("text")):
+                self.assertEqual(str(button.cget("selectcolor")), LIGHT.bg)
+        self.assertEqual(str(self.window.help_button.cget("activebackground")), LIGHT.border)
+        self.assertEqual(str(self.window.path_entry.cget("selectbackground")), LIGHT.fg)
+        self.assertEqual(str(self.window.path_entry.cget("selectforeground")), LIGHT.bg)
 
 
 class CloseTest(WindowTestCase):
