@@ -12,7 +12,7 @@ trailing Z the repository convention asks for. It lives here once:
 tests/folder_remove_empty/test_version.py fails when the two drift apart.
 """
 
-__VERSION__ = "1.1.20260927180137Z"
+__VERSION__ = "1.2.20260927181430Z"
 __version__ = __VERSION__.removesuffix("Z")
 APP_NAME = "folder_remove_empty"
 APP_NAME_VERBOSE = "FOLDER_REMOVE_EMPTY"

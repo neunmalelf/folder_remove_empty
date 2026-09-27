@@ -3,6 +3,18 @@ folder_remove_empty NEWS -- history of user-visible changes.
 User-visible highlights per release. The full per-version log is in
 `ChangeLog.md`.
 
+* Version 1.2.20260927181430 (2026-09-27)
+
+** CI, and the first bug it caught
+
+   The repository now checks itself on GitHub (pytest, ruff, mypy on Python
+   3.13), and that first run failed: the window module could not even be
+   imported on 3.13, because tkinter's `Event` is only subscriptable from 3.14
+   and the annotations were evaluated at import. The module defers its
+   annotations now, so the declared floor really works. `requirements-dev.txt`
+   pins the tool versions, and the README links the repository, the issue forms,
+   the security policy and both releases.
+
 * Version 1.1.20260927180137 (2026-09-27)
 
 ** Contributing, screenshots and a window smoke

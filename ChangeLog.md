@@ -5,6 +5,26 @@ A version is the UTC timestamp of its change, `x.x.YYYYMMDDhhmmss`, the output o
 `~/sbin/timestamp`. The user-facing highlights per release, in prose, are in
 `NEWS`.
 
+## 1.2.20260927181430 - 2026-09-27
+
+### Added
+
+- Continuous integration (`.github/workflows/checks.yml`): pytest, ruff and mypy
+  on Python 3.13 with `python3-tk` and `xvfb`, on every push and pull request.
+- `requirements-dev.txt` pins the tool versions this release was verified with.
+- the README gained a link section and a note that the window images come from
+  `make screenshots`.
+
+### Fixed
+
+- The window module could not be imported on Python 3.13, the floor this project
+  declares: the annotations `tk.Event[tk.Entry]` and `tk.Event[tk.Frame]` are
+  evaluated at import time and tkinter's `Event` only became subscriptable in
+  3.14, so collection died with `TypeError: type 'Event' is not subscriptable`.
+  The module now imports its annotations lazily (`from __future__ import
+  annotations`), which keeps the precise types. The new CI found this on its
+  first run; the local interpreter is 3.14 and never noticed.
+
 ## 1.1.20260927180137 - 2026-09-27
 
 ### Added — since the 1.0 cut
