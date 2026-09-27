@@ -74,6 +74,9 @@ the row below names the theme it switches to):
 
 ![the window in the dark theme](assets/window-dark.png)
 
+`make screenshots` redraws both images on a private Xvfb display
+(`assets/make_screenshots.sh`), so they never show the real desktop.
+
 Top to bottom it holds:
 
 | Row | What it holds |
@@ -85,7 +88,7 @@ Top to bottom it holds:
 | Show in history | four radio buttons: `All` (the default), `Removed`, `Kept`, `Not removed` |
 | Buttons | `Help`, the theme toggle, `Exit`, `Pause`, `Start`, in this order |
 | Current folder | a read-only line following the folder rated or removed right now |
-| History | the bold `History` heading and the scrollable list, one line per outcome, auto-scrolled to the bottom |
+| History | the bold `History` heading and the scrollable list, one line per outcome (`removed: <folder>`, `would remove: <folder>` in a dry run, `excluded, kept: <folder>`, `not removed: <folder> (<reason>)`), auto-scrolled to the bottom |
 
 The buttons:
 
@@ -124,6 +127,13 @@ with one button per subfolder (alphabetical, folders only), and a bottom row
 with `Select` and `Cancel`.
 
 ## Terminal mode (`--no-gui`)
+
+```bash
+folder_remove_empty --no-gui PATH     # work on the terminal
+folder_remove_empty --no-gui -d PATH  # -d / --dryrun / --dry-run: list, remove nothing
+folder_remove_empty --no-gui -v PATH  # -v / --verbose: report the kept folders left in place
+folder_remove_empty --help            # the full usage text
+```
 
 The terminal mode splits its output over the two streams:
 

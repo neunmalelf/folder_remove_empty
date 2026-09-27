@@ -5,10 +5,30 @@ A version is the UTC timestamp of its change, `x.x.YYYYMMDDhhmmss`, the output o
 `~/sbin/timestamp`. The user-facing highlights per release, in prose, are in
 `NEWS`.
 
-## 1.0.20260927162713 - 2026-09-27
+## 1.1.20260927180137 - 2026-09-27
 
-The Python port of `folder_remove_empty`, phase by phase (the plan is
-`todo/goal.md`, the behaviour contract `project_specs.md`).
+### Added — since the 1.0 cut
+
+- `assets/make_screenshots.sh` and the `make screenshots` target: both window
+  screenshots are drawn on a private Xvfb display from a fixed scratch root, so
+  the committed PNGs are reproducible.
+- `CONTRIBUTING.md`: the working setup, the check commands, the pre-commit
+  modules and their requirements, the conventions, the release pointer.
+- a `gui` module in the pre-commit hook: it opens the window (session display or
+  `xvfb-run`) and fails when the structure drifts or a widget is filled with the
+  palette accent.
+- `SECURITY.md` and the issue templates under `.github/ISSUE_TEMPLATE/`.
+- branch protection on `master` (force pushes and deletions disabled).
+
+### Fixed
+
+- the README drift: the option aliases (`-d`/`--dryrun`/`--dry-run`,
+  `-v`/`--verbose`) and the window's `would remove:` line are documented; no
+  option of `usage()` is missing any more.
+
+### The port, phase by phase
+
+The plan is `todo/goal.md`, the behaviour contract `project_specs.md`.
 
 ### Added — phase 1, packaging and tooling
 

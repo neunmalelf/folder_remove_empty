@@ -13,12 +13,13 @@ PYTHON     ?= python3
 DEST_DIR   ?= $(HOME)/sbin
 DATA_DIR   ?= $(HOME)/.local/share
 ICON_DIR   := assets/icons
+SHOT_SCRIPT := assets/make_screenshots.sh
 DESKTOP_IN := assets/folder_remove_empty.desktop
 MAN_DIR    := man
 TLDR_DIR   := tldr
 
 .DEFAULT_GOAL := help
-.PHONY: help test test-quick run man tldr icons install uninstall clean final
+.PHONY: help test test-quick run man tldr icons screenshots install uninstall clean final
 
 # Print the target list.
 help:
@@ -30,6 +31,7 @@ help:
 	@echo "  make man          write the man page into $(MAN_DIR)/"
 	@echo "  make tldr         write the tldr page into $(TLDR_DIR)/"
 	@echo "  make icons        redraw the app icon set (assets/icons/make_icons.sh)"
+	@echo "  make screenshots  redraw the two window screenshots (assets/make_screenshots.sh)"
 	@echo "  make install      install the launcher, the icons and the .desktop file"
 	@echo "  make uninstall    remove what make install put there"
 	@echo "  make clean        remove caches, build/, dist/ and *.egg-info"
@@ -97,6 +99,10 @@ uninstall:
 	@echo "uninstalled: $(APP)"
 
 # Remove every build output and cache of the project.
+# Redraw the two documentation screenshots of the window (needs Xvfb).
+screenshots:
+	@bash $(SHOT_SCRIPT)
+
 clean:
 	rm -rf build/ dist/ *.egg-info
 	rm -rf .pytest_cache/ .mypy_cache/ .ruff_cache/

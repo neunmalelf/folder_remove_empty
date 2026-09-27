@@ -3,7 +3,17 @@ folder_remove_empty NEWS -- history of user-visible changes.
 User-visible highlights per release. The full per-version log is in
 `ChangeLog.md`.
 
-* Version 1.0.20260927162713 (2026-09-27)
+* Version 1.1.20260927180137 (2026-09-27)
+
+** Contributing, screenshots and a window smoke
+
+   `make screenshots` redraws the two window images on a private display,
+   `CONTRIBUTING.md` documents the setup, the checks and the release, and the
+   pre-commit hook gained a `gui` module that opens the window and refuses a
+   commit when its structure drifts or a control is filled with the palette
+   accent. `SECURITY.md` and issue forms are in place, and `master` is protected
+   against force pushes and deletions. The release notes below describe the port
+   itself.
 
 ** The Python port is complete
 
