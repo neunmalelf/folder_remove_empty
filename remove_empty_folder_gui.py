@@ -7,6 +7,8 @@ per-run generation token makes the newest run the only owner of the window, so
 "Restart" replaces a live run and closing drops late updates (spec §7.5).
 """
 
+from __future__ import annotations
+
 import contextlib
 import functools
 import os
