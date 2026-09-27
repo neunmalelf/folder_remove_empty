@@ -1,0 +1,162 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "build_backend"
+backend-path = ["_internal"]
+
+[project]
+name = "ddpico"
+version = "4.1.20260926190940Z"
+description = "ddpico - a commandline and API-driven tool plus a granular, function-based dd command toolset with a REPL, pipe, scripting, and LSP"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+authors = [
+    { name = "neunmalelf" },
+]
+keywords = ["backup", "bak", "zip", "toolset", "repl", "cli"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: System :: Archiving :: Backup",
+]
+# ddpico is stdlib-only by design (Nuitka supports only Python 3.13;
+# zero third-party runtime dependencies).
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/neunmalelf/ddpico"
+Repository = "https://github.com/neunmalelf/ddpico"
+Documentation = "https://github.com/neunmalelf/ddpico/blob/master/README.md"
+"Bug Tracker" = "https://github.com/neunmalelf/ddpico/issues"
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "mypy",
+    "nuitka",
+    "mutmut",
+]
+lsp = [
+    "pygls>=1.3.0",
+]
+mediadownloader = [
+    "yt-dlp",
+]
+mediadownloader_web = [
+    "streamlit",
+]
+music = [
+    "mutagen",
+    "Pillow",
+]
+ebooks = [
+    "requests",
+    "selenium",
+]
+gui = [
+    "nicegui>=2.0.0",
+    "pywebview>=5.0.0",
+]
+libsec = [
+    "PyGObject",
+]
+server = [
+    "uvicorn>=0.30.0",
+]
+all = [
+    "ruff",
+    "mypy",
+    "nuitka",
+    "pygls>=1.3.0",
+    "yt-dlp",
+    "streamlit",
+    "mutagen",
+    "Pillow",
+    "requests",
+    "selenium",
+    "nicegui>=2.0.0",
+    "pywebview>=5.0.0",
+    "mutmut",
+    "PyGObject",
+    "uvicorn>=0.30.0",
+]
+
+[project.scripts]
+ddbak = "ddpico.bak.cli:main"
+ddcrawl = "ddpico.ddcrawler:main"
+ddfart = "ddpico.ddfart:main"
+ddgui = "ddpico.gui:main"
+ddmediadownloader = "ddpico.ddmediadownloader:main"
+ddpico = "ddpico:main"
+ddpicolibsec = "ddpico.ddpicolibsec:main"
+ddpico_lsp = "ddpico.lsp:main"
+ddserver = "ddpico.server.stdlib_server:server_cli"
+ddtts = "ddpico.ddtts:main"
+ddversion_get_from_filepath = "ddpico.version.cli:main"
+ddznumber = "ddpico.znumber:main"
+
+
+[tool.setuptools]
+packages = ["ddpico", "ddpico.bak", "ddpico.config", "ddpico.console", "ddpico.core", "ddpico.doc", "ddpico.doc.programs", "ddpico.fart", "ddpico.formula", "ddpico.fs", "ddpico.images", "ddpico.infra", "ddpico.lsp", "ddpico.lsp.analyzers", "ddpico.media", "ddpico.repl", "ddpico.sec", "ddpico.server", "ddpico.text", "ddpico.version"]
+
+# The LSP catalog and syntax theme are data files that must ship with the
+# package (loaded at runtime via importlib / the LSP server).
+[tool.setuptools.package-data]
+ddpico = ["lsp/*.json", "*.syntax"]
+
+[tool.mypy]
+files = ["ddpico"]
+
+# Optional integrations ship no type stubs / py.typed marker; importing them
+# must stay optional at runtime (guarded), so mypy skips these modules.
+[[tool.mypy.overrides]]
+module = [
+    "mediadownloader",
+    "mediadownloader.*",
+    "yt_dlp",
+    "yt_dlp.*",
+    "kokoro",
+    "kokoro.*",
+    "kokoro_onnx",
+    "kokoro_onnx.*",
+    "sounddevice",
+    "pyttsx3",
+    "nicegui",
+    "nicegui.*",
+    "webview",
+    "webview.*",
+    "uvicorn",
+    "uvicorn.*",
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # bugbear
+    "SIM",    # simplify
+]
+
+[tool.mutmut]
+source_paths = ["ddpico"]
+also_copy = ["ddpicolibsec_entry.py"]
+only_mutate = [
+    "ddpico/formula/engine.py",
+    "ddpico/fs/crawler.py",
+    "ddpico/ddpicolibsec.py",
+]
+pytest_add_cli_args_test_selection = [
+    "tests/ddformula",
+    "tests/ddfiles",
+    "tests/ddpicolibsec",
+]
+

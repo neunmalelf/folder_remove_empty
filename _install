@@ -1,0 +1,94 @@
+#!/bin/bash
+# _install - install or update ddpico directly into Python (no .venv needed).
+# Installs ddpico in editable mode (`pip install -e '.[dev,lsp]'`).
+# The `ddpico`, `ddpico_lsp`, `ddfart`, `ddbak`, `ddcrawl`,
+# `ddmediadownloader`, `ddznumber`, `ddversion_get_from_filepath`, and `ddtts` console scripts
+# are installed automatically. On later runs the repo is synced
+# from origin first via a guarded `git pull --ff-only`.
+#   usage: ./_install [options]
+#   options:
+#     -h, --help    show this help and exit
+#     --version     show the _install version and exit
+#   afterwards: ddpico <command> · ddfart · ddpico_lsp · ./_tests
+
+__VERSION__="2.10.20260926185459Z"
+
+set -u
+
+cd "$(dirname "$0")"
+
+# --- usage -------------------------------------------------------------------
+usage() {
+    cat <<EOF
+_install v${__VERSION__} - setup and update ddpico (direct install, no .venv)
+
+usage: ./_install [OPTIONS]
+
+options:
+  -h, --help    show this help and exit
+  --version     show the _install version and exit
+
+installs:   ddpico + ddpico_lsp + ddfart + ddbak + ddcrawl + ddmediadownloader + ddznumber + ddversion_get_from_filepath + ddtts + ruff + mypy
+afterwards: run 'ddpico <command>', 'ddfart', or 'ddpico_lsp' from anywhere, and './_tests'
+
+exit code: 0 on success, 1 on failure
+EOF
+}
+
+# --- argument parsing --------------------------------------------------------
+case "${1:-}" in
+    -h|--help)  usage; exit 0 ;;
+    --version)  echo "[_install] v${__VERSION__}"; exit 0 ;;
+    "")         : ;;
+    *)          echo "[_install] unknown option: ${1}" >&2; usage >&2; exit 1 ;;
+esac
+
+echo ""
+echo "[_install] v${__VERSION__} - ddpico setup (direct install)"
+echo ""
+
+# --- sync from origin (guarded pull) ----------------------------------------
+if command -v git >/dev/null 2>&1 && git rev-parse --git-dir >/dev/null 2>&1; then
+    if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+        echo "[_install] WARNING: uncommitted local changes present" >&2
+        echo "[_install] pulling with --ff-only (fails if the branches have diverged)" >&2
+    fi
+    if ! git pull --ff-only 2>/dev/null; then
+        echo "[_install] WARNING: git pull skipped or failed - continuing with local sources" >&2
+    fi
+else
+    echo "[_install] WARNING: no git repository found - skipping git pull" >&2
+fi
+
+# --- install directly via pip -----------------------------------------------
+echo "[_install] installing ddpico (editable: pip install -e '.[dev,lsp]')"
+python3 -m pip install -e ".[dev,lsp]"
+
+# --- verify -----------------------------------------------------------------
+echo "[_install] verifying..."
+python3 -m ddpico string_trim "  installed  " || { echo "[_install] ddpico verification failed" >&2; exit 1; }
+python3 -c "import ddpico; print('ddpico', ddpico.__version__, '-', len(ddpico.COMMANDS), 'commands ready')"
+
+# verify console script entry points
+for cmd in ddpico ddpico_lsp ddfart ddbak ddmediadownloader ddcrawl ddznumber ddversion_get_from_filepath ddtts; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+        echo "[_install] $cmd present: $(command -v $cmd)"
+    else
+        echo "[_install] NOTICE: $cmd not currently found in PATH (ensure ~/.local/bin or Python scripts dir is in PATH)"
+    fi
+done
+
+echo "[_install] installing shell completions (bash, zsh, fish)..."
+python3 -m ddpico --install-completions
+
+echo ""
+echo "[_install] DONE. You can now use ddpico globally without activating any venv:"
+echo "    ddpico <command>            # granular dd functions and REPL"
+echo "    ddpico <applet> [...]       # multi-call applets (fart, bak, crawler, datetime, znumber, etc.)"
+echo "    ddfart [wildcards] [find]   # find and replace text, fix pdf/ebook links"
+echo "    ddpico_lsp                  # LSP server"
+echo "  or in Python:"
+echo "    import ddpico"
+echo "  run test suite with:"
+echo "    ./_tests"
+echo ""

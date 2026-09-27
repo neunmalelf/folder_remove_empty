@@ -1,0 +1,230 @@
+#!/usr/bin/env bash
+# _check_version - validate version stamps and format for repository files.
+#   usage: ./_check_version [options]
+#   options:
+#     -h, --help    show this help and exit
+#     --version     show the _check_version version and exit
+#     --staged      check only git staged files against HEAD
+#     --working     check working tree changes against HEAD
+#     --all         check all versioned files in repository for format
+#
+# Pre-commit hook runs `./_check_version`.
+
+__VERSION__="1.0.20260926084553Z"
+
+set -u
+set -o pipefail
+
+if git_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    cd "$git_root"
+fi
+
+usage() {
+    cat <<EOF
+_check_version v${__VERSION__} - validate version stamps and format
+
+usage: ./_check_version [OPTIONS]
+
+options:
+  -h, --help    show this help and exit
+  --version     show the _check_version version and exit
+  --staged      check git staged files against HEAD
+  --working     check working tree changes against HEAD
+  --all         check all versioned files in repository
+EOF
+}
+
+MODE=""
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --version)
+            echo "_check_version v${__VERSION__}"
+            exit 0
+            ;;
+        --staged)
+            MODE="staged"
+            ;;
+        --working)
+            MODE="working"
+            ;;
+        --all)
+            MODE="all"
+            ;;
+        *)
+            echo "Unknown argument: $arg" >&2
+            echo "Run './_check_version --help' for usage." >&2
+            exit 1
+            ;;
+    esac
+done
+
+exec python3 - "$MODE" << 'PYEOF'
+import glob
+import os
+import re
+import subprocess
+import sys
+
+MODE = sys.argv[1] if len(sys.argv) > 1 else ""
+
+VERSION_RE = re.compile(r'^\d+\.\d+\.\d{14}Z$')
+PY_VER_RE = re.compile(
+    r'^\s*(__version__|__VERSION__)(?:\s*:\s*str)?\s*=\s*["\']([^"\']+)["\']',
+    re.MULTILINE,
+)
+TOML_VER_RE = re.compile(r'^\s*version\s*=\s*["\']([^"\']+)["\']', re.MULTILINE)
+
+EXCLUDED_PREFIXES = (
+    "history/",
+    "mutants/",
+    "build/",
+    "dist/",
+    ".venv/",
+    ".git/",
+    ".agents/",
+)
+EXCLUDED_EXACT = {"ddpico/__init__.py"}
+
+
+def is_excluded(path: str) -> bool:
+    if path in EXCLUDED_EXACT:
+        return True
+    return any(path.startswith(prefix) for prefix in EXCLUDED_PREFIXES)
+
+
+def extract_ver(path: str, content: str) -> str | None:
+    if path == "pyproject.toml":
+        m = TOML_VER_RE.search(content)
+        return m.group(1) if m else None
+    if path.endswith(".py"):
+        m = PY_VER_RE.search(content)
+        return m.group(2) if m else None
+    return None
+
+
+def get_head_content(path: str) -> str | None:
+    res = subprocess.run(
+        ["git", "show", f"HEAD:{path}"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    if res.returncode == 0:
+        return res.stdout.decode("utf-8", "surrogateescape")
+    return None
+
+
+def get_current_content(path: str, staged_only: bool = False) -> str | None:
+    if staged_only:
+        res = subprocess.run(
+            ["git", "show", f":{path}"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        if res.returncode == 0:
+            return res.stdout.decode("utf-8", "surrogateescape")
+        return None
+    if os.path.isfile(path):
+        try:
+            with open(path, "r", encoding="utf-8", errors="surrogateescape") as f:
+                return f.read()
+        except OSError:
+            return None
+    return None
+
+
+errors: list[str] = []
+checked = 0
+
+if MODE == "all":
+    candidates = sorted(glob.glob("**/*.py", recursive=True) + ["pyproject.toml"])
+    for f in candidates:
+        if is_excluded(f):
+            continue
+        content = get_current_content(f)
+        if content is None:
+            continue
+        ver = extract_ver(f, content)
+        if ver is None:
+            continue
+        checked += 1
+        if not VERSION_RE.match(ver):
+            errors.append(
+                f"[{f}] invalid version format: {ver!r} (expected Major.Minor.<14-digit>Z)"
+            )
+else:
+    is_staged = (MODE == "staged")
+    if MODE == "staged":
+        file_list = subprocess.check_output(
+            ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"]
+        ).decode().splitlines()
+    elif MODE == "working":
+        file_list = subprocess.check_output(
+            ["git", "diff", "HEAD", "--name-only", "--diff-filter=ACM"]
+        ).decode().splitlines()
+        untracked = subprocess.check_output(
+            ["git", "ls-files", "--others", "--exclude-standard"]
+        ).decode().splitlines()
+        file_list = sorted(set(file_list + untracked))
+    else:
+        # Default: if staged files exist, check staged; otherwise check working tree vs HEAD
+        staged = subprocess.check_output(
+            ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"]
+        ).decode().splitlines()
+        if staged:
+            file_list = staged
+            is_staged = True
+        else:
+            diff_head = subprocess.check_output(
+                ["git", "diff", "HEAD", "--name-only", "--diff-filter=ACM"]
+            ).decode().splitlines()
+            untracked = subprocess.check_output(
+                ["git", "ls-files", "--others", "--exclude-standard"]
+            ).decode().splitlines()
+            file_list = sorted(set(diff_head + untracked))
+
+    for f in file_list:
+        if is_excluded(f):
+            continue
+        if f != "pyproject.toml" and not f.endswith(".py"):
+            continue
+
+        curr_content = get_current_content(f, staged_only=is_staged)
+        if curr_content is None:
+            continue
+        curr_ver = extract_ver(f, curr_content)
+        if curr_ver is None:
+            continue
+
+        checked += 1
+        # 1. Format validation
+        if not VERSION_RE.match(curr_ver):
+            errors.append(
+                f"[{f}] invalid version format: {curr_ver!r} (expected Major.Minor.<14-digit>Z)"
+            )
+            continue
+
+        # 2. Bump validation against HEAD
+        head_content = get_head_content(f)
+        if head_content is not None and curr_content != head_content:
+            head_ver = extract_ver(f, head_content)
+            if head_ver is not None and head_ver == curr_ver:
+                errors.append(
+                    f"[{f}] modified but version was not updated (still {curr_ver})"
+                )
+
+if errors:
+    print(f"[_check_version] FAIL: {len(errors)} version error(s) found:", file=sys.stderr)
+    for err in errors:
+        print(f"  {err}", file=sys.stderr)
+    sys.exit(1)
+
+if checked > 0:
+    print(f"[_check_version] OK: {checked} versioned file(s) verified.")
+else:
+    print("[_check_version] OK: no modified files to check.")
+sys.exit(0)
+PYEOF

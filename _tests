@@ -1,0 +1,122 @@
+#!/bin/bash
+# _tests - run the full ddpico test suite, ruff and mypy checks.
+#   usage: ./_tests [OPTIONS] [PROGRAM]
+#   options:
+#     --quick    run only the unittest suite (skip ruff and mypy)
+#     -h, --help show this help and exit
+#     --version  show the _tests version and exit
+#   arguments:
+#     [PROGRAM]  optional standalone program name (e.g. ddpico, ddtoolbox, ddfart, ddcrawl, etc.)
+
+__VERSION__="1.9.20260917131535Z"
+
+set -u
+set -o pipefail
+
+fail=0
+QUICK=0
+TARGET_PROGRAM=""
+
+usage() {
+    cat <<EOF
+_tests v${__VERSION__} - run the ddpico checks
+
+usage: ./_tests [OPTIONS] [PROGRAM]
+
+options:
+  --quick       run only the unittest suite (skip ruff and mypy)
+  -h, --help    show this help and exit
+  --version     show the _tests version and exit
+
+arguments:
+  [PROGRAM]     run tests only for a specific standalone program
+                (e.g. ddpico, ddfart, ddbak, ddmediadownloader, ddpico_lsp, ddznumber)
+
+checks (default, in order):
+  [1/4] python3 -m unittest discover -s tests[/<program>] -t .
+  [2/4] ruff check ddpico tests
+  [3/4] mypy ddpico
+  [4/4] ./_export_sync --check
+
+exit code: 0 when all checks pass, 1 otherwise
+EOF
+}
+
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help)  usage; exit 0 ;;
+        --version)  echo "[_tests] v${__VERSION__}"; exit 0 ;;
+        --quick)    QUICK=1 ;;
+        *)
+            if [ -d "tests/$arg" ]; then
+                TARGET_PROGRAM="$arg"
+            elif [ -z "$TARGET_PROGRAM" ]; then
+                echo "[_tests] unknown option or test directory: $arg" >&2
+                usage >&2
+                exit 1
+            fi
+            ;;
+    esac
+done
+
+echo ""
+echo "[_tests] v${__VERSION__} - ddpico checks"
+echo ""
+
+TEST_DIR="tests"
+if [ -n "$TARGET_PROGRAM" ]; then
+    TEST_DIR="tests/$TARGET_PROGRAM"
+    echo "[_tests] scoping tests to $TEST_DIR"
+fi
+
+echo "[1/4] python3 -m unittest discover -s $TEST_DIR -t ."
+if ! python3 -m unittest discover -s "$TEST_DIR" -t . 2>&1 | tail -5; then
+    echo "[_tests] unittest FAILED" >&2
+    fail=1
+fi
+echo ""
+
+if [ "$QUICK" -eq 1 ]; then
+    echo "[_tests] --quick given: skipping ruff + mypy + export sync check"
+    exit $fail
+fi
+
+echo "[2/4] ruff check ddpico tests"
+if command -v ruff >/dev/null 2>&1; then
+    if ! ruff check ddpico tests; then
+        echo "[_tests] ruff FAILED" >&2
+        fail=1
+    fi
+else
+    echo "[_tests] ruff not found - SKIPPED" >&2
+fi
+echo ""
+
+echo "[3/4] mypy ddpico"
+if command -v mypy >/dev/null 2>&1; then
+    if ! mypy ddpico; then
+        echo "[_tests] mypy FAILED" >&2
+        fail=1
+    fi
+else
+    echo "[_tests] mypy not found - SKIPPED" >&2
+fi
+echo ""
+
+echo "[4/4] ./_export_sync --check"
+if [ -x "./_export_sync" ]; then
+    if ! ./_export_sync --check; then
+        echo "[_tests] export sync check FAILED" >&2
+        fail=1
+    fi
+else
+    echo "[_tests] _export_sync not found - SKIPPED" >&2
+fi
+echo ""
+
+if [ "$fail" -eq 0 ]; then
+    echo "[_tests] ALL CHECKS PASSED"
+else
+    echo "[_tests] CHECKS FAILED (see above)" >&2
+fi
+exit $fail

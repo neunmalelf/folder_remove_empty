@@ -1,0 +1,338 @@
+#!/bin/bash
+# _build - build ddpico standalone programs into self-contained binaries with Nuitka and optionally release via gh.
+#   usage: ./_build [OPTIONS] [PROGRAM]
+#   options:
+#     --release     build, tag with version, and create a GitHub release via gh CLI
+#     -h, --help    show this help and exit
+#     --version     show the _build version and exit
+#   arguments:
+#     [PROGRAM]     optional specific standalone program to build (e.g. ddpico, ddfart, ddbak, ddmediadownloader, ddpico_lsp, ddcrawl, ddznumber, ddversion_get_from_filepath, ddtts)
+
+__VERSION__="2.19.20260926010714Z"
+
+set -u
+
+cd "$(dirname "$0")" || exit 1
+
+DO_RELEASE=0
+DO_PACKAGE=0
+DO_KOKORO=0
+LOW_MEMORY=0
+USE_MUSL=0
+DRY_RUN=0
+JOBS="${NUITKA_JOBS:-}"
+TARGET_PROGRAM=""
+
+# Dynamically extract project name from pyproject.toml
+PROJECT_NAME=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['name'])" 2>/dev/null || echo "ddpico")
+
+# --- voice notification helpers ----------------------------------------------
+_build_ok() {
+    echo ""
+    echo "[_build] Build succeeded."
+    python3 -m ddpico speech "the build of project $PROJECT_NAME has finished" female 2>/dev/null \
+        || ddpico speech "the build of project $PROJECT_NAME has finished" female 2>/dev/null || true
+}
+
+_build_aborted() {
+    local exit_code="${1:-1}"
+    echo ""
+    echo "[_build] Build aborted / failed with exit code $exit_code." >&2
+    python3 -m ddpico speech "the build of project $PROJECT_NAME aborted" male 2>/dev/null \
+        || ddpico speech "the build of project $PROJECT_NAME aborted" male 2>/dev/null || true
+    exit "$exit_code"
+}
+
+# Trap user interrupts (Ctrl+C / SIGINT / SIGTERM / SIGHUP) to speak abort notification
+trap "_build_aborted 130" INT TERM HUP
+
+# --- usage -------------------------------------------------------------------
+usage() {
+    cat <<EOF
+_build v${__VERSION__} - build standalone programs defined in ddpico.programs with Nuitka
+
+usage: ./_build [OPTIONS] [PROGRAM]
+
+options:
+  --release             tag the current commit with the version, package checksums & manifest, and create a GitHub release
+  --package, --checksums package release artifacts with SHA256SUMS and release_manifest.json
+  --musl, --static-musl build standalone binary targeting musl libc (Alpine Linux)
+  --dry-run             display build plan, packaging, and compilation commands without executing
+  --jobs=N, -j N        limit parallel C compiler jobs (default: 4 on multi-core, or NUITKA_JOBS env)
+  --low-memory          run Nuitka in low-memory mode (fewer compiler jobs, minimal RAM footprint)
+  -h, --help            show this help and exit
+  --version             show the _build version and exit
+
+arguments:
+  [PROGRAM]     build only a specific standalone program (e.g. ddpico, ddfart, ddbak, ddmediadownloader, ddpico_lsp, ddcrawl, ddznumber, ddversion_get_from_filepath, ddtts)
+
+standalone programs registry:
+$(python3 -m ddpico.programs list 2>/dev/null || echo "  (ddpico.programs unavailable)")
+
+exit code: 0 on success, 1 on failure
+EOF
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --release)              DO_RELEASE=1; DO_PACKAGE=1; shift ;;
+        --package|--checksums)  DO_PACKAGE=1; shift ;;
+        --kokoro)               DO_KOKORO=1; shift ;;
+        --low-memory)           LOW_MEMORY=1; shift ;;
+        --musl|--static-musl)   USE_MUSL=1; shift ;;
+        --dry-run)              DRY_RUN=1; shift ;;
+        --jobs=*)               JOBS="${1#*=}"; shift ;;
+        -j=*)                   JOBS="${1#*=}"; shift ;;
+        -j|--jobs)              JOBS="$2"; shift 2 ;;
+        -h|--help)              usage; exit 0 ;;
+        --version)              echo "[_build] v${__VERSION__}"; exit 0 ;;
+        -*)                     echo "[_build] unknown option: $1" >&2; usage >&2; exit 1 ;;
+        *)                      TARGET_PROGRAM="$1"; shift ;;
+    esac
+done
+
+DETECTED_CPUS=$(nproc 2>/dev/null || echo 4)
+if [ -z "$JOBS" ]; then
+    if [ "$DETECTED_CPUS" -gt 4 ]; then
+        # Default to 4 parallel jobs to leave remaining cores free for the system
+        JOBS=4
+    else
+        JOBS="$DETECTED_CPUS"
+    fi
+fi
+
+# Use low scheduling priority on Linux so interactive desktop / terminals never freeze
+EXEC_PREFIX=""
+if command -v nice >/dev/null 2>&1; then
+    EXEC_PREFIX="nice -n 19"
+fi
+if command -v ionice >/dev/null 2>&1; then
+    EXEC_PREFIX="$EXEC_PREFIX ionice -c 3"
+fi
+
+echo ""
+echo "[_build] v${__VERSION__} - standalone programs Nuitka build"
+echo "[_build] compiler jobs: $JOBS (system CPUs: $DETECTED_CPUS)"
+if [ "$LOW_MEMORY" -eq 1 ]; then
+    echo "[_build] mode: low-memory"
+fi
+echo ""
+
+# --- get version using ddpico --version-only ---------------------------------
+VERSION=$(python3 -m ddpico --version-only 2>/dev/null || sed -n "s/^version = \"(.*)\"/ /p" pyproject.toml)
+[ -n "$VERSION" ] || VERSION="unknown"
+echo "[_build] package version: $VERSION"
+
+# --- resolve musl container runtime or local nuitka -------------------------
+CONTAINER_RUNTIME=""
+MOUNT_SUFFIX=""
+if [ "$USE_MUSL" -eq 1 ]; then
+    if command -v podman >/dev/null 2>&1; then
+        CONTAINER_RUNTIME="podman"
+    elif command -v docker >/dev/null 2>&1; then
+        CONTAINER_RUNTIME="docker"
+    fi
+    if [ -z "$CONTAINER_RUNTIME" ] && [ "$DRY_RUN" -eq 0 ]; then
+        echo "[_build] ERROR: --musl requires podman or docker on PATH." >&2
+        _build_aborted 1
+    fi
+    [ -z "$CONTAINER_RUNTIME" ] && CONTAINER_RUNTIME="podman"
+    if [ "$CONTAINER_RUNTIME" = "podman" ]; then
+        MOUNT_SUFFIX=":z"
+    fi
+    echo "[_build] musl target active: using container runtime '$CONTAINER_RUNTIME' (alpine:latest)"
+elif [ "$DRY_RUN" -eq 0 ]; then
+    if ! python3 -c "import nuitka" >/dev/null 2>&1; then
+        echo "[_build] installing nuitka via pip..."
+        python3 -m pip install --upgrade nuitka || { echo "[_build] nuitka install FAILED" >&2; _build_aborted 1; }
+    fi
+fi
+
+# --- platform flags ----------------------------------------------------------
+NUITKA_EXTRA="--jobs=$JOBS"
+if [ "$LOW_MEMORY" -eq 1 ]; then
+    NUITKA_EXTRA="$NUITKA_EXTRA --low-memory"
+fi
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*|*windows*|*WINDOWS*|*Windows*)
+        if python3 -c "import sys; sys.exit(0 if sys.version_info < (3, 13) else 1)" 2>/dev/null; then
+            NUITKA_EXTRA="$NUITKA_EXTRA --mingw64"
+        fi
+        ;;
+esac
+
+# --- binary install destinations ---------------------------------------------
+CONFIGURATION_DESTINATION_DIRECTORY_FOR_BINARY_ON_WINDOWS="/b/winsbin"
+CONFIGURATION_DESTINATION_DIRECTORY_FOR_BINARY_ON_MSYS2="/b/winsbin"
+CONFIGURATION_DESTINATION_DIRECTORY_FOR_BINARY_ON_LINUX="$HOME/sbin"
+CONFIGURATION_DESTINATION_DIRECTORY_FOR_BINARY_ON_OSX="/usr/local/bin"
+
+install_binaries() {
+    local _destination_for_binary=""
+    case "$(uname -s)" in
+        MSYS*)
+            _destination_for_binary="${CONFIGURATION_DESTINATION_DIRECTORY_FOR_BINARY_ON_MSYS2:-$CONFIGURATION_DESTINATION_DIRECTORY_FOR_BINARY_ON_WINDOWS}"
+            ;;
+        MINGW*|CYGWIN*|*windows*|*WINDOWS*|*Windows*)
+            _destination_for_binary="${CONFIGURATION_DESTINATION_DIRECTORY_FOR_BINARY_ON_WINDOWS:-$CONFIGURATION_DESTINATION_DIRECTORY_FOR_BINARY_ON_MSYS2}"
+            ;;
+        Linux)
+            _destination_for_binary="$CONFIGURATION_DESTINATION_DIRECTORY_FOR_BINARY_ON_LINUX"
+            ;;
+        Darwin)
+            _destination_for_binary="$CONFIGURATION_DESTINATION_DIRECTORY_FOR_BINARY_ON_OSX"
+            ;;
+    esac
+    if [ -n "$_destination_for_binary" ]; then
+        mkdir -p "$_destination_for_binary" 2>/dev/null || true
+        for b in "${BUILT_BINARIES[@]}"; do
+            if [ -f "build/$b" ]; then
+                echo "[_build] installing $b -> $_destination_for_binary/"
+                cp -f "build/$b" "$_destination_for_binary/" || echo "[_build] WARNING: copy $b to $_destination_for_binary failed" >&2
+            fi
+        done
+    fi
+}
+
+COMMON_MODULES="--include-module=json --include-module=shutil --include-module=pathlib --include-module=fnmatch --include-module=glob --include-module=subprocess"
+
+# Query build manifest from ddpico.programs
+MANIFEST=$(python3 -m ddpico.programs build-manifest)
+if [ -z "$MANIFEST" ]; then
+    echo "[_build] ERROR: failed to obtain build manifest from ddpico.programs" >&2
+    _build_aborted 1
+fi
+
+BUILT_BINARIES=()
+RELEASE_FILES=()
+
+TOTAL=$(echo "$MANIFEST" | wc -l)
+CURRENT=0
+
+while IFS="|" read -r PROG_NAME BIN_NAME ENTRY_SCRIPT PROG_EXTRA; do
+    [ -n "$PROG_NAME" ] || continue
+    if [ -n "$TARGET_PROGRAM" ] && [ "$TARGET_PROGRAM" != "$PROG_NAME" ]; then
+        continue
+    fi
+    CURRENT=$((CURRENT + 1))
+    TARGET_BIN="$BIN_NAME"
+    if [ "$USE_MUSL" -eq 1 ]; then
+        TARGET_BIN="${BIN_NAME}-musl"
+        COMPILE_CMD="$CONTAINER_RUNTIME run --rm -v \"$(pwd):/workspace$MOUNT_SUFFIX\" -w /workspace alpine:latest /bin/sh -c \"apk add --no-cache python3 py3-pip gcc musl-dev >/dev/null 2>&1 && python3 -m pip install --upgrade nuitka >/dev/null 2>&1 && python3 -m nuitka --standalone --onefile --output-dir=build --output-filename=$TARGET_BIN $COMMON_MODULES $ENTRY_SCRIPT\""
+    else
+        COMPILE_CMD="$EXEC_PREFIX python3 -m nuitka --standalone --onefile --assume-yes-for-downloads --onefile-tempdir-spec=\"{CACHE_DIR}/ddpico/${BIN_NAME}/${VERSION}\" $NUITKA_EXTRA $PROG_EXTRA --output-dir=build --output-filename=\"$BIN_NAME\" --remove-output $COMMON_MODULES \"$ENTRY_SCRIPT\""
+    fi
+
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "  [DRY-RUN] $PROG_NAME ($TARGET_BIN)"
+        echo "            Command: $COMPILE_CMD"
+        BUILT_BINARIES+=("$TARGET_BIN")
+        RELEASE_FILES+=("build/$TARGET_BIN")
+        continue
+    fi
+
+    echo ""
+    echo "[_build] [$CURRENT/$TOTAL] compiling $PROG_NAME ($TARGET_BIN) with nuitka..."
+    eval "$COMPILE_CMD" || { echo "[_build] $PROG_NAME build FAILED" >&2; _build_aborted 1; }
+
+    BUILT_BINARIES+=("$TARGET_BIN")
+    RELEASE_FILES+=("build/$TARGET_BIN")
+done <<< "$MANIFEST"
+
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo ""
+    echo "[_build] DRY-RUN SUCCESS: Planned binaries:"
+    for b in "${BUILT_BINARIES[@]}"; do
+        echo "  - build/$b"
+    done
+    if [ "$DO_PACKAGE" -eq 1 ]; then
+        echo ""
+        echo "[_build] DRY-RUN SUCCESS: Planned release packaging artifacts:"
+        echo "  - build/SHA256SUMS (cryptographic checksums of all binaries)"
+        echo "  - build/release_manifest.json (release metadata with sha256 and sizes)"
+    fi
+    if [ "$DO_RELEASE" -eq 1 ]; then
+        echo ""
+        echo "[_build] DRY-RUN SUCCESS: Planned GitHub release:"
+        echo "  Tag: v$VERSION"
+        echo "  Files: ${RELEASE_FILES[*]} build/SHA256SUMS build/release_manifest.json"
+        echo "  Command: gh release create v$VERSION <files...> --title v$VERSION"
+    fi
+    exit 0
+fi
+
+echo ""
+echo "[_build] DONE. Produced binaries:"
+for b in "${BUILT_BINARIES[@]}"; do
+    echo "  - build/$b"
+done
+
+# --- generate release packaging artifacts (SHA256SUMS and release_manifest.json) ---
+if [ "$DO_PACKAGE" -eq 1 ]; then
+    mkdir -p build 2>/dev/null || true
+    echo ""
+    echo "[_build] generating SHA256 checksums in build/SHA256SUMS..."
+    (
+        cd build || exit 1
+        if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "${BUILT_BINARIES[@]}" > SHA256SUMS
+        elif command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 "${BUILT_BINARIES[@]}" > SHA256SUMS
+        fi
+    )
+    RELEASE_FILES+=("build/SHA256SUMS")
+
+    echo "[_build] generating release manifest in build/release_manifest.json..."
+    python3 -c "
+import json, hashlib, os, sys
+from datetime import datetime, timezone
+
+version = '$VERSION'
+project = '$PROJECT_NAME'
+binaries = [b for b in sys.argv[1:] if b]
+artifacts = []
+
+for b in binaries:
+    path = os.path.join('build', b)
+    if os.path.isfile(path):
+        with open(path, 'rb') as f:
+            h = hashlib.sha256(f.read()).hexdigest()
+        size = os.path.getsize(path)
+        artifacts.append({'filename': b, 'sha256': h, 'size_bytes': size})
+
+manifest = {
+    'project': project,
+    'version': version,
+    'generated_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+    'artifacts': artifacts
+}
+
+with open(os.path.join('build', 'release_manifest.json'), 'w', encoding='utf-8') as f:
+    json.dump(manifest, f, indent=2)
+" "${BUILT_BINARIES[@]}"
+    RELEASE_FILES+=("build/release_manifest.json")
+fi
+
+# --- copy binaries to their platform install destinations --------------------
+install_binaries
+
+# --- automated GitHub release via gh CLI -------------------------------------
+if [ "$DO_RELEASE" -eq 1 ]; then
+    TAG="v${VERSION}"
+    echo ""
+    echo "[_build] automated release: tagging $TAG and publishing release..."
+    if command -v git >/dev/null 2>&1; then
+        git tag -a "$TAG" -m "Release $TAG" 2>/dev/null || git tag "$TAG"
+        git push origin "$TAG" 2>/dev/null || echo "[_build] WARNING: git push origin $TAG skipped/failed"
+    fi
+    if command -v gh >/dev/null 2>&1; then
+        echo "[_build] creating GitHub release via gh CLI: $TAG"
+        gh release create "$TAG" "${RELEASE_FILES[@]}" \
+            --title "$TAG" \
+            --notes "Automated standalone binary release for ddpico suite $VERSION" || {
+            echo "[_build] WARNING: gh release create failed" >&2
+        }
+    fi
+fi
+
+_build_ok
