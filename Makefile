@@ -19,7 +19,7 @@ MAN_DIR    := man
 TLDR_DIR   := tldr
 
 .DEFAULT_GOAL := help
-.PHONY: help test test-quick run man tldr icons screenshots install uninstall clean final
+.PHONY: help test test-quick check-gui run man tldr icons screenshots install uninstall clean final
 
 # Print the target list.
 help:
@@ -27,6 +27,7 @@ help:
 	@echo ""
 	@echo "  make test         run the whole check (pytest + ruff + mypy) via ./_tests"
 	@echo "  make test-quick   run the test suite only (./_tests --quick)"
+	@echo "  make check-gui    run the window checks on a private display (xvfb-run)"
 	@echo "  make run          start the program (python3 -m folder_remove_empty)"
 	@echo "  make man          write the man page into $(MAN_DIR)/"
 	@echo "  make tldr         write the tldr page into $(TLDR_DIR)/"
@@ -99,6 +100,24 @@ uninstall:
 	@echo "uninstalled: $(APP)"
 
 # Remove every build output and cache of the project.
+# Run the window checks on a private display: the tests never open a window on
+# the screen you are working on, and this target makes that explicit. With
+# xvfb-run the window modules run directly on the private server (the marker
+# tells them they are already private); without it the guard module decides.
+check-gui:
+	@if command -v xvfb-run >/dev/null 2>&1; then \
+		echo "== window checks on a private display =="; \
+		xvfb-run -a --server-args="-screen 0 1280x1024x24" \
+			env FOLDER_REMOVE_EMPTY_PRIVATE_DISPLAY=1 \
+			$(PYTHON) -m pytest -q \
+				tests/folder_remove_empty/test_gui.py \
+				tests/folder_remove_empty/test_gui_reference.py \
+				tests/folder_remove_empty/test_private_display.py; \
+	else \
+		echo "== no xvfb-run: the guard decides where the window opens =="; \
+		$(PYTHON) -m pytest -q tests/folder_remove_empty/test_private_display.py; \
+	fi
+
 # Redraw the two documentation screenshots of the window (needs Xvfb).
 screenshots:
 	@bash $(SHOT_SCRIPT)

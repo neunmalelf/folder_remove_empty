@@ -69,6 +69,10 @@ Every module can be skipped with `SKIP_<MODULE>=1`, all of them with
 - **Tests**: a new behaviour goes to `tests/folder_remove_empty/`, one
   `test_<unit>.py` per unit; the reference captures must stay green, because
   they are what proves the port still behaves like the original.
+- **Windows and automation**: any script, test or check that opens the window
+  must do it on a private display (`xvfb-run`), never on the session screen —
+  see *Window tests and your screen* in `README.md`. Only `make run` and the
+  installed launcher are meant to open the real window.
 - **Builds**: one compiler job at a time (`./_build` defaults to `--jobs=1`
   `--lto=no`, under `nice`/`ionice`); never raise it without being asked, and
   never run two heavy builds at once.

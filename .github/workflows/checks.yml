@@ -27,8 +27,12 @@ jobs:
       - name: Install tkinter and Xvfb
         run: sudo apt-get update && sudo apt-get install -y python3-tk xvfb
 
-      - name: Install the package with the dev tools
-        run: python3 -m pip install -e '.[dev]'
+      # requirements-dev.txt mirrors the `dev` extra with exact pins, so CI
+      # runs the versions the release was verified with.
+      - name: Install the pinned dev tools and the package
+        run: |
+          python3 -m pip install -r requirements-dev.txt
+          python3 -m pip install -e .
 
       # The suite includes the private-display guard, which re-runs the
       # window modules under xvfb-run.

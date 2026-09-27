@@ -1,5 +1,7 @@
 # FOLDER_REMOVE_EMPTY
 
+[![checks](https://github.com/neunmalelf/folder_remove_empty/actions/workflows/checks.yml/badge.svg)](https://github.com/neunmalelf/folder_remove_empty/actions/workflows/checks.yml)
+
 > **Status — the port is complete.** The engine, the command line, the terminal
 > mode, the generated man and tldr pages, the tkinter window and the persisted
 > settings file are implemented and green (142 tests plus 107 subtests). The
@@ -212,6 +214,23 @@ FOLDER_REMOVE_EMPTY_EXCLUDE='keep-*:downloads*' \
 `--help` prints the usage text, `--version` prints
 `folder_remove_empty version <stamp>`, `--print-man` prints the man page and
 `--print-tldr` the tldr page.
+
+### Window tests and your screen
+
+The window tests (and the pre-commit hook's `gui` module) never open a window on
+the display you are working on: that steals the focus and flashes the whole
+desktop. They open a private Xvfb display instead, so a test run looks like this:
+
+```text
+39 skipped in the parent run   ("the window tests run on a private display")
+ 1 passed                      (the guard re-ran them under xvfb-run, display :99)
+```
+
+`FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session` runs them on your screen when you want
+to watch, `SKIP_GUI=1` skips the hook module for one commit, and
+`make check-gui` runs the window checks on a private display by hand. Without
+`xvfb-run` the tests fall back to the session display, or skip when there is no
+display at all.
 
 ## Development
 
