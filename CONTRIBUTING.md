@@ -71,8 +71,9 @@ Every module can be skipped with `SKIP_<MODULE>=1`, all of them with
   they are what proves the port still behaves like the original.
 - **Windows and automation**: any script, test or check that opens the window
   must do it on a private display (`xvfb-run`), never on the session screen —
-  see *Window tests and your screen* in `README.md`. Only `make run` and the
-  installed launcher are meant to open the real window.
+  see *Window tests and your screen* in `README.md` and `docs/window-display.md`.
+  Only `make run`, `_run` and the installed launcher are meant to open the real
+  window, and the suite fails when a new script breaks that rule.
 - **Builds**: one compiler job at a time (`./_build` defaults to `--jobs=1`
   `--lto=no`, under `nice`/`ionice`); never raise it without being asked, and
   never run two heavy builds at once.

@@ -53,6 +53,7 @@ py-modules = [
     "folder_remove_empty",
     "remove_empty_folder_config",
     "remove_empty_folder_core",
+    "remove_empty_folder_display",
     "remove_empty_folder_docs",
     "remove_empty_folder_gui",
     "remove_empty_folder_options",

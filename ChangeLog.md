@@ -5,6 +5,37 @@ A version is the UTC timestamp of its change, `x.x.YYYYMMDDhhmmss`, the output o
 `~/sbin/timestamp`. The user-facing highlights per release, in prose, are in
 `NEWS`.
 
+## 1.3.20260927191420 - 2026-09-27
+
+### Added
+
+- `remove_empty_folder_display.py`: the one private-display contract every piece
+  of automation speaks (the window tests, `make check-gui`, `make check-313`,
+  the pre-commit `gui` module and `assets/make_screenshots.sh`), with
+  `python3 -m remove_empty_folder_display --check|--print` for shell scripts.
+- `tests/folder_remove_empty/test_script_display_policy.py`: fails the suite when
+  a repository script runs the program without `xvfb-run` or the policy check;
+  the only session openers are `_run`, `_menu`'s `r` entry and `make run`.
+- `make check-gui`: the window checks on a private display by hand.
+- `make check-313`: `make final` plus `make check-gui` on Python 3.13 in a
+  `python:3.13-slim` container, repository mounted read-only and copied inside,
+  a leftover diff failing the target.
+- `_check_pins` and the warn-only pre-commit module `pins`: report dev tools that
+  drift from `requirements-dev.txt` (what CI installs).
+- `docs/window-display.md`: the long form of the display policy, linked from
+  `README.md` and `CONTRIBUTING.md`.
+- `.github/workflows/checks.yml` with the `checks` badge in the README, and
+  `checks` is a required status context on `master`.
+
+### Changed
+
+- CI installs `requirements-dev.txt` plus the package instead of the unpinned
+  `.[dev]` extra, so the checked environment is the pinned one.
+- `assets/make_screenshots.sh` refuses to run outside a private display.
+- the earlier notes for this batch (badge, required context, pinned CI install,
+  `make check-gui`, the README display section) are backfilled here; they were
+  committed after 1.2 was cut.
+
 ## 1.2.20260927181430 - 2026-09-27
 
 ### Added

@@ -227,10 +227,12 @@ desktop. They open a private Xvfb display instead, so a test run looks like this
 ```
 
 `FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session` runs them on your screen when you want
-to watch, `SKIP_GUI=1` skips the hook module for one commit, and
-`make check-gui` runs the window checks on a private display by hand. Without
-`xvfb-run` the tests fall back to the session display, or skip when there is no
-display at all.
+to watch, `SKIP_GUI=1` skips the hook module for one commit, `make check-gui`
+runs the window checks on a private display by hand and `make check-313` runs
+them on Python 3.13 in a container. Without `xvfb-run` the tests fall back to
+the session display, or skip when there is no display at all. The full contract,
+including what a new script has to do, is in
+[`docs/window-display.md`](docs/window-display.md).
 
 ## Development
 

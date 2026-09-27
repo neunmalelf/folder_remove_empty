@@ -14,8 +14,12 @@
 #
 # Needs Xvfb, xvfb-run and ImageMagick. The generated PNGs are committed, so this
 # script only runs when the window changes.
+#
+# The private display is not a nicety here: the child refuses to run anywhere
+# else (`python3 -m remove_empty_folder_display --check`), so a capture can
+# never take over the screen you are working on.
 
-__VERSION__="1.0.20260927171155Z"
+__VERSION__="1.0.20260927191235Z"
 
 set -euo pipefail
 
@@ -70,9 +74,17 @@ root.after(20000, root.destroy)
 root.mainloop()
 PYEOF
 
-xvfb-run -a --server-args="-screen 0 $SCREEN" bash -s -- \
+env FOLDER_REMOVE_EMPTY_PRIVATE_DISPLAY=1 \
+    FOLDER_REMOVE_EMPTY_SESSION_DISPLAY="${DISPLAY:-}" \
+    FOLDER_REMOVE_EMPTY_GUI_DISPLAY="${FOLDER_REMOVE_EMPTY_GUI_DISPLAY:-}" \
+    xvfb-run -a --server-args="-screen 0 $SCREEN" bash -s -- \
     "$SCRATCH" "$OUT_DIR" "$ROOT" "$WIDTH" "$HEIGHT" "$OFFSET_X" "$OFFSET_Y" <<'CHILD'
 set -euo pipefail
+
+# the same policy every other script and the test suite speak: no window on the
+# screen the user is working on
+python3 -m remove_empty_folder_display --check "assets/make_screenshots.sh"
+
 scratch="$1"
 out="$2"
 root="$3"

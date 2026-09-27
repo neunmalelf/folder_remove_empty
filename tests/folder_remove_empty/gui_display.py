@@ -1,9 +1,9 @@
 """the display policy of the window tests: never the session screen.
 
-Opening the window on the session display steals the focus and makes the whole
-screen flash, so the window tests (and the pre-commit `gui` module that drives
-them) run on a private Xvfb display. The session display is used only when it is
-asked for by name:
+The contract lives in `remove_empty_folder_display.py` (the module the scripts,
+`make check-gui` and `make check-313` use too); this module adds the two things
+only a test run needs: the tkinter probe that tells whether a window can be
+opened here at all, and the skip pair for the window test classes.
 
     FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session   run on the screen you are sitting in front of
 
@@ -13,26 +13,21 @@ Without `xvfb-run` the tests fall back to the session display and say so, or
 skip when there is no display at all.
 """
 
-import os
-import shutil
-import subprocess
-from collections.abc import Sequence
+from remove_empty_folder_display import (
+    DISPLAY_MARKER,
+    POLICY,
+    PRIVATE_MARKER,
+    SESSION_MARKER,
+    marked_private,
+    private_display_wanted,
+    run_under_xvfb,
+    session_wanted,
+    xvfb_run,
+)
 
-# set by whoever started a private display (the guard test, the pre-commit hook)
-PRIVATE_MARKER = "FOLDER_REMOVE_EMPTY_PRIVATE_DISPLAY"
-# set by the private run to record the display it was given
-DISPLAY_MARKER = "FOLDER_REMOVE_EMPTY_PRIVATE_DISPLAY_NAME"
-# set by the private run to remember which display the session had, so a test
-# can assert that the window never went there
-SESSION_MARKER = "FOLDER_REMOVE_EMPTY_SESSION_DISPLAY"
-# "session" opts into the screen the user is working on
-POLICY = "FOLDER_REMOVE_EMPTY_GUI_DISPLAY"
-
-XVFB_RUN = shutil.which("xvfb-run")
-PRIVATE = os.environ.get(PRIVATE_MARKER) == "1"
-SESSION_WANTED = os.environ.get(POLICY) == "session"
-PRIVATE_NAME = os.environ.get(DISPLAY_MARKER)
-SESSION_DISPLAY = os.environ.get("DISPLAY")
+XVFB_RUN = xvfb_run()
+PRIVATE = marked_private()
+SESSION_WANTED = session_wanted()
 
 
 def window_refusal() -> str | None:
@@ -57,18 +52,6 @@ REFUSAL = window_refusal()
 NO_WINDOW = REFUSAL or "no display"
 
 
-def private_display_wanted() -> bool:
-    """report whether this run should move to a private display first
-    usage: private_display_wanted
-    returns: True when xvfb-run is available, the session display is not asked
-             for and this run is not already private
-
-    example: private_display_wanted()
-
-    """
-    return bool(XVFB_RUN) and not PRIVATE and not SESSION_WANTED
-
-
 def skip_arguments() -> tuple[bool, str]:
     """build the skip condition and its reason for the window test classes
     usage: skip_arguments
@@ -84,24 +67,18 @@ def skip_arguments() -> tuple[bool, str]:
     return False, ""
 
 
-def run_under_xvfb(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
-    """run a command on a fresh private Xvfb display
-    usage: run_under_xvfb <ARGV>
-    returns: the completed process of the private run
-
-    example: run_under_xvfb([sys.executable, "-m", "pytest", "tests/...", "-q"])
-
-    """
-    environment = dict(os.environ, **{PRIVATE_MARKER: "1"})
-    environment[DISPLAY_MARKER] = "private"
-    if SESSION_DISPLAY is not None:
-        environment[SESSION_MARKER] = SESSION_DISPLAY
-    environment.pop("DISPLAY", None)
-    assert XVFB_RUN is not None
-    return subprocess.run(
-        [XVFB_RUN, "-a", "--server-args=-screen 0 1280x1024x24", *argv],
-        capture_output=True,
-        text=True,
-        env=environment,
-        cwd=os.getcwd(),
-    )
+__all__ = [
+    "DISPLAY_MARKER",
+    "NO_WINDOW",
+    "POLICY",
+    "PRIVATE",
+    "PRIVATE_MARKER",
+    "REFUSAL",
+    "SESSION_MARKER",
+    "SESSION_WANTED",
+    "XVFB_RUN",
+    "private_display_wanted",
+    "run_under_xvfb",
+    "skip_arguments",
+    "window_refusal",
+]

@@ -22,6 +22,7 @@
 #   SKIP_TESTS=1              Skip test suite execution
 #   SKIP_GUI=1                Skip the window smoke (needs a display or xvfb-run)
 #   SKIP_DOCS=1               Skip generated man/tldr page drift validation
+#   SKIP_PINS=1               Skip the dev-tool pin drift reminder (_check_pins)
 #   SKIP_BUILD=1              Skip build validation
 #   PRE_COMMIT_BUILD=1        Enable standalone build verification (_build)
 
@@ -284,7 +285,23 @@ module_build() {
     return 0
 }
 
-# Module 9: Drop-in directory modules (hooks/pre-commit.d/*.sh)
+# Module 9: Dev tool pins (requirements-dev.txt vs the installed tools).
+# Warn only: a commit that runs locally is still useful, the reminder is that
+# CI installs the pins and therefore checks a different environment.
+module_pins() {
+    local check_script="$ROOT/_check_pins"
+    if [[ ! -f "$check_script" ]]; then
+        return 0
+    fi
+
+    echo "==> pre-commit [pins]: comparing the installed dev tools with requirements-dev.txt" >&2
+    if ! "$check_script" < /dev/null >&2; then
+        echo "pre-commit [pins]: the installed tools drift from requirements-dev.txt (warning only)" >&2
+    fi
+    return 0
+}
+
+# Module 10: Drop-in directory modules (hooks/pre-commit.d/*.sh)
 module_directory_hooks() {
     local hooks_dir="$ROOT/hooks/pre-commit.d"
     if [[ ! -d "$hooks_dir" ]]; then
@@ -308,7 +325,7 @@ module_directory_hooks() {
 
 # --- 3. Module Runner & Dispatcher -------------------------------------------
 
-MODULES=("version" "skill_sync" "ruff" "mypy" "tests" "gui" "docs" "build" "directory_hooks")
+MODULES=("version" "skill_sync" "ruff" "mypy" "tests" "gui" "docs" "pins" "build" "directory_hooks")
 
 is_module_skipped() {
     local mod="$1"
@@ -335,6 +352,7 @@ run_module() {
         tests)           module_tests ;;
         gui)             module_gui ;;
         docs)            module_docs ;;
+        pins)            module_pins ;;
         build)           module_build ;;
         directory_hooks) module_directory_hooks ;;
         *)

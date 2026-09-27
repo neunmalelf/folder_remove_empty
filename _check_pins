@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# _check_pins - report installed dev tools that drift from requirements-dev.txt.
+#   usage: ./_check_pins [options]
+#   options:
+#     -h, --help     show this help and exit
+#     --version      show the _check_pins version and exit
+#     --strict       exit 1 on drift (default: warn only, exit 0)
+#     --quiet        print nothing when the pins match
+#     --file FILE    read the pins from FILE (default: requirements-dev.txt)
+#
+# The pins are what CI installs, so a drift between them and the interpreter you
+# are working in means a local check did not run in the verified environment.
+# The pre-commit hook runs this script as a reminder; it never blocks a commit.
+
+__VERSION__="1.0.20260927210043Z"
+
+set -u
+set -o pipefail
+
+if git_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    cd "$git_root"
+fi
+
+PINS_FILE="requirements-dev.txt"
+STRICT=0
+QUIET=0
+
+usage() {
+    cat <<EOF
+_check_pins v${__VERSION__} - report dev tools that drift from the pins
+
+usage: ./_check_pins [OPTIONS]
+
+options:
+  -h, --help     show this help and exit
+  --version      show the _check_pins version and exit
+  --strict       exit 1 on drift (default: warn only, exit 0)
+  --quiet        print nothing when the pins match
+  --file FILE    read the pins from FILE (default: requirements-dev.txt)
+
+examples:
+  ./_check_pins                     warn when the installed tools drift
+  ./_check_pins --quiet             silent unless something drifts
+  ./_check_pins --strict            fail on drift (CI or a release check)
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        --version)
+            echo "_check_pins v${__VERSION__}"
+            exit 0
+            ;;
+        --strict)
+            STRICT=1
+            shift
+            ;;
+        --quiet)
+            QUIET=1
+            shift
+            ;;
+        --file)
+            if [[ $# -lt 2 ]]; then
+                echo "_check_pins: --file needs a path" >&2
+                exit 2
+            fi
+            PINS_FILE="$2"
+            shift 2
+            ;;
+        *)
+            echo "_check_pins: unknown option '$1' (try --help)" >&2
+            exit 2
+            ;;
+    esac
+done
+
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "_check_pins: python3 is missing - SKIPPED" >&2
+    exit 0
+fi
+
+python3 - "$PINS_FILE" "$STRICT" "$QUIET" <<'PY'
+"""compare the installed distributions with the pins of a requirements file."""
+
+import importlib.metadata
+import pathlib
+import sys
+
+pins_path = pathlib.Path(sys.argv[1])
+strict = sys.argv[2] == "1"
+quiet = sys.argv[3] == "1"
+
+if not pins_path.is_file():
+    print(f"_check_pins: {pins_path} is missing - SKIPPED", file=sys.stderr)
+    raise SystemExit(0)
+
+pins: dict[str, str] = {}
+for line in pins_path.read_text().splitlines():
+    line = line.split("#", 1)[0].strip()
+    if "==" not in line:
+        continue
+    name, _, version = line.partition("==")
+    pins[name.strip()] = version.strip()
+
+drift: list[tuple[str, str, str]] = []
+for name in sorted(pins):
+    want = pins[name]
+    try:
+        have = importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        drift.append((name, want, "not installed"))
+        continue
+    if have != want:
+        drift.append((name, want, have))
+
+if not drift:
+    if not quiet:
+        print(f"_check_pins: {len(pins)} pinned tool(s) match {pins_path.name}")
+    raise SystemExit(0)
+
+print(f"WARNING: the installed dev tools drift from {pins_path.name}:", file=sys.stderr)
+for name, want, have in drift:
+    print(f"  {name}: pinned {want}, installed {have}", file=sys.stderr)
+print(f"  CI installs the pins: python3 -m pip install -r {pins_path}", file=sys.stderr)
+raise SystemExit(1 if strict else 0)
+PY

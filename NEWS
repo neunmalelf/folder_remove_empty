@@ -3,6 +3,20 @@ folder_remove_empty NEWS -- history of user-visible changes.
 User-visible highlights per release. The full per-version log is in
 `ChangeLog.md`.
 
+* Version 1.3.20260927191420 (2026-09-27)
+
+** The window never takes over your screen
+
+   The display policy got one home (`remove_empty_folder_display.py`) and a
+   name to call it by from a shell script: `python3 -m remove_empty_folder_display
+   --check` fails when a script would open the window on the screen you are
+   working on. The suite fails too when a new script runs the program without
+   `xvfb-run`, so a check cannot start flashing your desktop by accident. The
+   long form is in `docs/window-display.md`, and `make check-313` repeats the
+   whole check on Python 3.13 in a container, read-only, so the version-specific
+   break the CI found cannot wait for a push. `_check_pins` reports dev tools
+   that drift from the pins CI installs.
+
 * Version 1.2.20260927181430 (2026-09-27)
 
 ** CI, and the first bug it caught
