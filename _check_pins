@@ -10,6 +10,7 @@
 #     --update       rewrite FILE with the installed versions (after a run that
 #                    was verified with them)
 #     --ci           fail when the CI workflow does not install exactly these pins
+#                    or runs another Python than requires-python declares
 #     --ci-file FILE read the CI workflow from FILE
 #                    (default: .github/workflows/checks.yml)
 #
@@ -17,7 +18,7 @@
 # are working in means a local check did not run in the verified environment.
 # The pre-commit hook runs this script as a reminder; it never blocks a commit.
 
-__VERSION__="1.0.20260927210043Z"
+__VERSION__="1.1.20260928070213Z"
 
 set -u
 set -o pipefail
@@ -48,6 +49,7 @@ options:
   --update       rewrite FILE with the installed versions (after a run that was
                  verified with them); the comment header stays
   --ci           fail when the CI workflow does not install exactly these pins
+                 or runs another Python than requires-python declares
   --ci-file FILE read the CI workflow from FILE
                  (default: .github/workflows/checks.yml)
 
@@ -56,7 +58,7 @@ examples:
   ./_check_pins --quiet             silent unless something drifts
   ./_check_pins --strict            fail on drift (CI or a release check)
   ./_check_pins --update            pin what is installed right now
-  ./_check_pins --ci                the workflow installs exactly these pins
+  ./_check_pins --ci                the workflow installs the pins on the floor Python
 EOF
 }
 
@@ -122,6 +124,7 @@ import importlib.metadata
 import pathlib
 import re
 import sys
+import tomllib
 
 pins_path = pathlib.Path(sys.argv[1])
 strict = sys.argv[2] == "1"
@@ -191,8 +194,25 @@ if update:
     print("  re-run the checks with these versions before committing")
     raise SystemExit(0)
 
+def floor_python() -> str | None:
+    """report the Python floor declared by pyproject.toml
+    usage: floor_python
+    returns: the "major.minor" of requires-python, or None when it is missing
+
+    example: floor_python()
+
+    """
+    pyproject = pathlib.Path("pyproject.toml")
+    if not pyproject.is_file():
+        return None
+    data = tomllib.loads(pyproject.read_text())
+    spec = str(data.get("project", {}).get("requires-python", ""))
+    found = re.search(r"(\d+\.\d+)", spec)
+    return found.group(1) if found else None
+
+
 def ci_problems() -> list[str]:
-    """report the differences between the pins and the CI install
+    """report the differences between the pins, the floor and the CI install
     usage: ci_problems
     returns: one message per difference (a missing reference included)
 
@@ -212,6 +232,18 @@ def ci_problems() -> list[str]:
                 problems.append(
                     f"{ci_path.name} installs {spec}, {pins_path.name} says "
                     f"{name}=={pins.get(name, 'nothing')}"
+                )
+    floor = floor_python()
+    versions = re.findall(r"python-version:\s*['\"]?([0-9]+\.[0-9]+)", ci_path.read_text())
+    if floor is None:
+        problems.append("pyproject.toml declares no requires-python floor")
+    elif not versions:
+        problems.append(f"{ci_path.name} pins no python-version")
+    else:
+        for version in versions:
+            if version != floor:
+                problems.append(
+                    f"{ci_path.name} runs Python {version}, requires-python says >={floor}"
                 )
     return problems
 

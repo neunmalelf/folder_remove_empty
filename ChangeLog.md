@@ -5,6 +5,25 @@ A version is the UTC timestamp of its change, `x.x.YYYYMMDDhhmmss`, the output o
 `~/sbin/timestamp`. The user-facing highlights per release, in prose, are in
 `NEWS`.
 
+## 1.8.20260928070213 - 2026-09-28
+
+### Added
+
+- `_check_pins --ci` also compares the CI workflow's `python-version` with the
+  `requires-python` floor of `pyproject.toml`, so a workflow that runs another
+  Python than the declared floor fails `make pins` (and therefore `make final`).
+- `docs/checks.md` gained the artifact column of the release table (checksum,
+  `--version`, `--help` against the reference) and a section on adding a check
+  script or a hook module.
+
+### Changed
+
+- `tests/folder_remove_empty/test_private_display.py` calls the entry point
+  (`./_tests --gui`) instead of naming `window_checks.sh`, which is now named by
+  `_tests` alone.
+- `make test-quick` is gone: `./_tests --quick` is the command (one entry point,
+  no Makefile duplicate). `CONTRIBUTING.md` shows the literal pre-push command.
+
 ## 1.7.20260928064816 - 2026-09-28
 
 ### Added

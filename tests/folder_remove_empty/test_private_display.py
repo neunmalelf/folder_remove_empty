@@ -1,11 +1,12 @@
 """the guard that keeps the window tests off the screen the user is working on.
 
 `gui_display.py` holds the policy and this module is the collected part of it:
-when a private display is wanted it re-runs the window checks
-(`window_checks.sh`, which owns the module list) under `xvfb-run`. That child
-refuses a session display itself (`--assert-private`), so the check that the
-window never went to the user's screen lives in one place - the script - and is
-in force for `make test`, `make check-gui` and `make check-313` alike.
+when a private display is wanted it re-runs the window checks under `xvfb-run`
+through the one entry point, `./_tests --gui` (which in turn drives
+`tests/folder_remove_empty/window_checks.sh`, the only place that names the
+window test modules). That child refuses a session display itself, so the check
+that the window never went to the user's screen lives in one place and is in
+force for `make test`, `make check-gui` and `make check-313` alike.
 """
 
 import os
@@ -13,8 +14,8 @@ import unittest
 
 from tests.folder_remove_empty import gui_display
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-WINDOW_CHECKS = os.path.join(HERE, "window_checks.sh")
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+TESTS = os.path.join(ROOT, "_tests")
 
 
 @unittest.skipUnless(
@@ -25,7 +26,7 @@ class PrivateDisplayGuardTest(unittest.TestCase):
     """run the window tests on a private display, not on the user's screen."""
 
     def test_the_window_tests_pass_on_a_private_display(self) -> None:
-        result = gui_display.run_under_xvfb(["bash", WINDOW_CHECKS, "--assert-private"])
+        result = gui_display.run_under_xvfb(["bash", TESTS, "--gui"])
         self.assertEqual(
             result.returncode,
             0,

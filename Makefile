@@ -19,14 +19,14 @@ MAN_DIR    := man
 TLDR_DIR   := tldr
 
 .DEFAULT_GOAL := help
-.PHONY: help test test-quick check-gui check-313 check-all pins run man tldr icons screenshots install uninstall clean final
+.PHONY: help test check-gui check-313 check-all pins run man tldr icons screenshots install uninstall clean final
 
 # Print the target list.
 help:
 	@echo "folder_remove_empty - make targets"
 	@echo ""
 	@echo "  make test         the check entry point (./_tests: pytest + ruff + mypy)"
-	@echo "  make test-quick   run the test suite only (./_tests --quick)"
+	@echo "                    ./_tests --quick  tests only     ./_tests --gui  window checks"
 	@echo "  make check-gui    ./_tests --gui: the window checks (=session asks for your screen)"
 	@echo "  make check-313    run the whole check and the window checks on Python 3.13 (podman)"
 	@echo "  make check-all    the pre-push set: final + check-gui + check-313"
@@ -50,10 +50,6 @@ pins:
 # Run the full check: pytest, ruff and mypy, all from ./_tests.
 test:
 	@./_tests
-
-# Run the test suite alone, without ruff and mypy.
-test-quick:
-	@./_tests --quick
 
 # Start the program: the window by default, a terminal run with --no-gui.
 run:

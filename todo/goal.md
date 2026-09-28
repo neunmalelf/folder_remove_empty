@@ -84,7 +84,7 @@ adapted or deleted; nothing is left as a stub.
 | `mkdocs.yml` | **deleted** — the documentation site is dropped (user decision) |
 | `_check_version` | keep — project-agnostic: globs `**/*.py` + `pyproject.toml` and matches `^\d+\.\d+\.\d{14}Z$` |
 | `_skill_sync` | keep — project-agnostic: regenerates the skill index between the markers in `AGENTS.md`. The index was stale; it was regenerated (17 skills) and `--check` is green again, so the pre-commit module can run |
-| `_tests` | **adapted** (`2.0.20260927111114Z`) — three steps: `python3 -m pytest tests/folder_remove_empty`, `python3 -m ruff check .`, `python3 -m mypy`; `--quick` runs the tests only. The `[PROGRAM]` argument, the `tests/<program>` scoping and the `_export_sync --check` step are gone |
+| `_tests` | **adapted** (`2.1.20260928064816Z`) — the one check entry point (`make test`, `make check-gui` call it): three steps `python3 -m pytest tests/folder_remove_empty`, `python3 -m ruff check .`, `python3 -m mypy`; `--quick` runs the tests only, `--gui` the window checks on a private display. The `[PROGRAM]` argument, the `tests/<program>` scoping and the `_export_sync --check` step are gone |
 | `_build` | **adapted** (`3.0.20260927111114Z`) — one target (`folder_remove_empty.py`), no program registry, no `ddpico speech` calls, no forced `--include-module` list (every import is static, Nuitka follows them); default one compiler job with `--lto=no` per the repository's build-parallelism rule, plus `--enable-plugin=tk-inter` so the frozen binary carries the window toolkit; `nice -n 19`/`ionice -c 3`, the musl path (container installs `python3-tkinter`) and the release/packaging machinery stay |
 | `_install` | **adapted** (`3.0.20260927111114Z`) — `python3 -m pip install -e ".[dev]"`, verification imports the version module (exit 1 on failure) and reports whether `folder_remove_empty` is on PATH |
 | `_menu` | **adapted** (`2.0.20260927111114Z`) — install / test / build / git / git push / run `python3 -m folder_remove_empty`; the `_symlinks`, `_bak` and `ddfart` entries are gone |
@@ -110,7 +110,7 @@ folder_remove_empty_pi/
 ├── README.md                             # done: Python/tkinter documentation
 ├── ChangeLog.md                          # done: first entry = the port
 ├── NEWS                                  # done: first entry = the port
-├── Makefile                              # done: help/test/test-quick/run/man/tldr/icons/install/uninstall/clean/final
+├── Makefile                              # done: help/test/check-gui/check-313/check-all/pins/run/man/tldr/icons/screenshots/install/uninstall/clean/final
 ├── .gitignore                            # done
 ├── folder_remove_empty.py                # done: main(), run_terminal(), run_window()
 ├── remove_empty_folder_version.py        # done: __VERSION__, __version__, APP_NAME, version_banner()
@@ -758,7 +758,7 @@ display and without `xvfb-run` the window tests skip.
       finished program in phase 5
 - [x] `ChangeLog.md` and `NEWS` with the port release — **written in the
       phase 1 batch** (entry `1.0.20260927131905`); extend with each phase
-- [x] `Makefile` rewritten (`help`, `test`, `test-quick`, `run`, `man`,
+- [x] `Makefile` rewritten (`help`, `test`, `run`, `man`,
       `tldr`, `icons`, `install`, `uninstall`, `clean`, `final`); `make final`
       is green except the phases 4/5 generators — **written in the phase 1
       batch**
@@ -943,8 +943,9 @@ runs from the repository root and is meant to be copy-pasteable as written.
    line must read `OK`, then `cd ..`), read
    `build/release_manifest.json` against the binary, and run
    `./build/folder_remove_empty --version` and
-   `./build/folder_remove_empty --help` to see the packaged front ends come
-   up.
+   `./build/folder_remove_empty --help | diff -
+   tests/folder_remove_empty/reference/info_help.out` so the packaged help is
+   byte-identical to the reference.
 5. `git add -A && git commit` — the installed pre-commit hook must pass; it
    is the gate that keeps pages, version strings and the build honest.
 6. `git push origin master`.

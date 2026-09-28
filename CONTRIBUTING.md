@@ -69,6 +69,15 @@ Every module can be skipped with `SKIP_<MODULE>=1`, all of them with
 - **Tests**: a new behaviour goes to `tests/folder_remove_empty/`, one
   `test_<unit>.py` per unit; the reference captures must stay green, because
   they are what proves the port still behaves like the original.
+- **Before a push**: run the whole set — it takes about two minutes and it is
+  the same set the release checklist starts with:
+
+  ```bash
+  make check-all      # ./_tests, the pages, the pins, the window checks, Python 3.13 in a container
+  ```
+
+  Without a container runtime, `make final` plus `./_tests --gui` is the fast
+  path (`make check-313` skips itself when podman is missing).
 - **Where the checks run**: `make final` runs the whole repository check on the
   interpreter you are working in, `make check-313` repeats it on Python 3.13 in a
   container (the run before a push), `make check-all` is the whole pre-push set,
