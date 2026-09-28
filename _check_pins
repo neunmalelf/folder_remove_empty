@@ -9,6 +9,9 @@
 #     --file FILE    read the pins from FILE (default: requirements-dev.txt)
 #     --update       rewrite FILE with the installed versions (after a run that
 #                    was verified with them)
+#     --ci           fail when the CI workflow does not install exactly these pins
+#     --ci-file FILE read the CI workflow from FILE
+#                    (default: .github/workflows/checks.yml)
 #
 # The pins are what CI installs, so a drift between them and the interpreter you
 # are working in means a local check did not run in the verified environment.
@@ -27,6 +30,8 @@ PINS_FILE="requirements-dev.txt"
 STRICT=0
 QUIET=0
 UPDATE=0
+CI=0
+CI_FILE=".github/workflows/checks.yml"
 
 usage() {
     cat <<EOF
@@ -42,12 +47,16 @@ options:
   --file FILE    read the pins from FILE (default: requirements-dev.txt)
   --update       rewrite FILE with the installed versions (after a run that was
                  verified with them); the comment header stays
+  --ci           fail when the CI workflow does not install exactly these pins
+  --ci-file FILE read the CI workflow from FILE
+                 (default: .github/workflows/checks.yml)
 
 examples:
   ./_check_pins                     warn when the installed tools drift
   ./_check_pins --quiet             silent unless something drifts
   ./_check_pins --strict            fail on drift (CI or a release check)
   ./_check_pins --update            pin what is installed right now
+  ./_check_pins --ci                the workflow installs exactly these pins
 EOF
 }
 
@@ -73,6 +82,19 @@ while [[ $# -gt 0 ]]; do
             UPDATE=1
             shift
             ;;
+        --ci)
+            CI=1
+            shift
+            ;;
+        --ci-file)
+            if [[ $# -lt 2 ]]; then
+                echo "_check_pins: --ci-file needs a path" >&2
+                exit 2
+            fi
+            CI=1
+            CI_FILE="$2"
+            shift 2
+            ;;
         --file)
             if [[ $# -lt 2 ]]; then
                 echo "_check_pins: --file needs a path" >&2
@@ -93,17 +115,20 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 0
 fi
 
-python3 - "$PINS_FILE" "$STRICT" "$QUIET" "$UPDATE" <<'PY'
+python3 - "$PINS_FILE" "$STRICT" "$QUIET" "$UPDATE" "$CI" "$CI_FILE" <<'PY'
 """compare the installed distributions with the pins of a requirements file."""
 
 import importlib.metadata
 import pathlib
+import re
 import sys
 
 pins_path = pathlib.Path(sys.argv[1])
 strict = sys.argv[2] == "1"
 quiet = sys.argv[3] == "1"
 update = sys.argv[4] == "1"
+ci = sys.argv[5] == "1"
+ci_path = pathlib.Path(sys.argv[6])
 
 if not pins_path.is_file():
     print(f"_check_pins: {pins_path} is missing - SKIPPED", file=sys.stderr)
@@ -166,14 +191,46 @@ if update:
     print("  re-run the checks with these versions before committing")
     raise SystemExit(0)
 
-if not drift:
+def ci_problems() -> list[str]:
+    """report the differences between the pins and the CI install
+    usage: ci_problems
+    returns: one message per difference (a missing reference included)
+
+    example: ci_problems()
+
+    """
+    if not ci_path.is_file():
+        return [f"{ci_path} is missing"]
+    installs = [line.strip() for line in ci_path.read_text().splitlines() if "pip install" in line]
+    problems: list[str] = []
+    if not any(pins_path.name in line for line in installs):
+        problems.append(f"{ci_path.name} never installs '-r {pins_path.name}'")
+    for line in installs:
+        for spec in re.findall(r"[A-Za-z0-9_.-]+==[0-9][A-Za-z0-9_.-]*", line):
+            name, _, version = spec.partition("==")
+            if pins.get(name) != version:
+                problems.append(
+                    f"{ci_path.name} installs {spec}, {pins_path.name} says "
+                    f"{name}=={pins.get(name, 'nothing')}"
+                )
+    return problems
+
+
+problems = ci_problems() if ci else []
+
+if not drift and not problems:
     if not quiet:
         print(f"_check_pins: {len(pins)} pinned tool(s) match {pins_path.name}")
     raise SystemExit(0)
 
-print(f"WARNING: the installed dev tools drift from {pins_path.name}:", file=sys.stderr)
-for name, want, have in drift:
-    print(f"  {name}: pinned {want}, installed {have}", file=sys.stderr)
-print(f"  CI installs the pins: python3 -m pip install -r {pins_path}", file=sys.stderr)
-raise SystemExit(1 if strict else 0)
+if drift:
+    print(f"WARNING: the installed dev tools drift from {pins_path.name}:", file=sys.stderr)
+    for name, want, have in drift:
+        print(f"  {name}: pinned {want}, installed {have}", file=sys.stderr)
+    print(f"  CI installs the pins: python3 -m pip install -r {pins_path}", file=sys.stderr)
+if problems:
+    print(f"WARNING: the CI install does not match {pins_path.name}:", file=sys.stderr)
+    for problem in problems:
+        print(f"  {problem}", file=sys.stderr)
+raise SystemExit(1 if problems or (strict and drift) else 0)
 PY

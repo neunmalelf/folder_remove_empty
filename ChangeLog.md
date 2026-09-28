@@ -5,6 +5,28 @@ A version is the UTC timestamp of its change, `x.x.YYYYMMDDhhmmss`, the output o
 `~/sbin/timestamp`. The user-facing highlights per release, in prose, are in
 `NEWS`.
 
+## 1.7.20260928064816 - 2026-09-28
+
+### Added
+
+- `./_check_pins --ci` (and `--ci-file`): fails when the CI workflow does not
+  install exactly the pinned tools - a pinned package the workflow adds, a
+  version it installs differently, or a workflow that never installs
+  `-r requirements-dev.txt`. `make pins` runs it, so `make final` does too.
+
+### Changed
+
+- `./_tests` is the one check entry point: `--quick` (tests only) and the new
+  `--gui` (the window checks on a private display) are its modes; `make test`
+  and `make check-gui` are thin calls of it, so a contributor learns one command.
+- `test_private_display.py` lost its in-process display assertion: the child
+  refuses a session display itself (`window_checks.sh --assert-private`), so the
+  check lives in one place, in force for `make test`, `make check-gui` and
+  `make check-313` alike. `gui_display.py` shrank to the three names the suite
+  reads (`private_display_wanted`, `run_under_xvfb`, `skip_arguments`).
+- the release checklist starts with `./make check-all` instead of `./make final`
+  and carries `docs/checks.md`'s release table as part of the release.
+
 ## 1.6.20260927202851 - 2026-09-27
 
 ### Added

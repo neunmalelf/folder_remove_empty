@@ -1,9 +1,11 @@
 """the guard that keeps the window tests off the screen the user is working on.
 
-`gui_display.py` holds the policy; this module is the collected part of it: when
-a private display is wanted it re-runs the window checks (`window_checks.sh`,
-which owns the module list) under `xvfb-run`, and inside that private run it
-asserts that the session display was really left alone.
+`gui_display.py` holds the policy and this module is the collected part of it:
+when a private display is wanted it re-runs the window checks
+(`window_checks.sh`, which owns the module list) under `xvfb-run`. That child
+refuses a session display itself (`--assert-private`), so the check that the
+window never went to the user's screen lives in one place - the script - and is
+in force for `make test`, `make check-gui` and `make check-313` alike.
 """
 
 import os
@@ -29,17 +31,6 @@ class PrivateDisplayGuardTest(unittest.TestCase):
             0,
             f"the private run failed:\n{result.stdout[-3000:]}\n{result.stderr[-3000:]}",
         )
-
-
-@unittest.skipUnless(gui_display.PRIVATE, "not the private run")
-class PrivateDisplayUsedTest(unittest.TestCase):
-    """inside the private run: prove the session display was not touched."""
-
-    def test_the_display_is_not_the_session_one(self) -> None:
-        session = os.environ.get(gui_display.SESSION_MARKER)
-        if session is None:
-            self.skipTest("the session display was unset, nothing to compare")
-        self.assertNotEqual(os.environ.get("DISPLAY"), session)
 
 
 if __name__ == "__main__":

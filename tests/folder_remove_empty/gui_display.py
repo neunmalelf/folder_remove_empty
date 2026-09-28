@@ -1,7 +1,7 @@
 """the display policy of the window tests: never the session screen.
 
 The contract lives in `remove_empty_folder_display.py` (the module the scripts,
-`make check-gui` and `make check-313` use too); this module adds the two things
+`./_tests --gui` and `make check-313` use too); this module adds the two things
 only a test run needs: the tkinter probe that tells whether a window can be
 opened here at all, and the skip pair for the window test classes.
 
@@ -13,14 +13,7 @@ Without `xvfb-run` the tests fall back to the session display and say so, or
 skip when there is no display at all.
 """
 
-from remove_empty_folder_display import (
-    SESSION_MARKER,
-    marked_private,
-    private_display_wanted,
-    run_under_xvfb,
-)
-
-PRIVATE = marked_private()
+from remove_empty_folder_display import private_display_wanted, run_under_xvfb
 
 
 def window_refusal() -> str | None:
@@ -60,10 +53,4 @@ def skip_arguments() -> tuple[bool, str]:
     return False, ""
 
 
-__all__ = [
-    "PRIVATE",
-    "SESSION_MARKER",
-    "private_display_wanted",
-    "run_under_xvfb",
-    "skip_arguments",
-]
+__all__ = ["private_display_wanted", "run_under_xvfb", "skip_arguments"]

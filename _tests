@@ -3,16 +3,19 @@
 #   usage: ./_tests [OPTIONS]
 #   options:
 #     --quick    run only the test suite (skip ruff and mypy)
+#     --gui      run only the window checks on a private display
 #     -h, --help show this help and exit
 #     --version  show the _tests version and exit
+#
+# This is the one check entry point: `make test` and `make check-gui` call it.
 
-__VERSION__="2.0.20260927111114Z"
+__VERSION__="2.1.20260928064816Z"
 
 set -u
 set -o pipefail
 
 fail=0
-QUICK=0
+MODE="full"
 
 usage() {
     cat <<EOF
@@ -22,6 +25,7 @@ usage: ./_tests [OPTIONS]
 
 options:
   --quick       run only the test suite (skip ruff and mypy)
+  --gui         run only the window checks on a private display
   -h, --help    show this help and exit
   --version     show the _tests version and exit
 
@@ -29,6 +33,10 @@ checks (default, in order):
   [1/3] python3 -m pytest tests/folder_remove_empty
   [2/3] python3 -m ruff check .
   [3/3] python3 -m mypy
+
+modes (the last one given wins):
+  --quick       [1/3] only
+  --gui         the window checks via tests/folder_remove_empty/window_checks.sh
 
 exit code: 0 when all checks pass, 1 otherwise
 EOF
@@ -38,7 +46,8 @@ for arg in "$@"; do
     case "$arg" in
         -h|--help)  usage; exit 0 ;;
         --version)  echo "[_tests] v${__VERSION__}"; exit 0 ;;
-        --quick)    QUICK=1 ;;
+        --quick)    MODE="quick" ;;
+        --gui)      MODE="gui" ;;
         *)
             echo "[_tests] unknown option or argument: $arg" >&2
             usage >&2
@@ -51,6 +60,16 @@ echo ""
 echo "[_tests] v${__VERSION__} - folder_remove_empty checks"
 echo ""
 
+if [ "$MODE" = "gui" ]; then
+    echo "[gui] the window checks on a private display (window_checks.sh --assert-private)"
+    if ! python3 -m remove_empty_folder_display --wrap-sh \
+        "bash tests/folder_remove_empty/window_checks.sh --assert-private"; then
+        echo "[_tests] the window checks FAILED" >&2
+        exit 1
+    fi
+    exit 0
+fi
+
 echo "[1/3] python3 -m pytest tests/folder_remove_empty"
 if ! python3 -m pytest tests/folder_remove_empty 2>&1 | tail -5; then
     echo "[_tests] pytest FAILED" >&2
@@ -58,7 +77,7 @@ if ! python3 -m pytest tests/folder_remove_empty 2>&1 | tail -5; then
 fi
 echo ""
 
-if [ "$QUICK" -eq 1 ]; then
+if [ "$MODE" = "quick" ]; then
     echo "[_tests] --quick given: skipping ruff + mypy checks"
     exit $fail
 fi

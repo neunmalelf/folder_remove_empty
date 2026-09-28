@@ -3,6 +3,17 @@ folder_remove_empty NEWS -- history of user-visible changes.
 User-visible highlights per release. The full per-version log is in
 `ChangeLog.md`.
 
+* Version 1.7.20260928064816 (2026-09-28)
+
+** One entry point, and CI that cannot drift from the pins
+
+   `./_tests` is the check entry point now (`--quick`, `--gui`); `make test` and
+   `make check-gui` just call it. The window display assertion lives in one place
+   (`window_checks.sh --assert-private`), and `./_check_pins --ci` fails when the
+   CI workflow installs something other than the pinned tools — so `make pins`
+   (part of `make final`) catches a workflow that quietly added a version. The
+   release checklist starts with `./make check-all`.
+
 * Version 1.6.20260927202851 (2026-09-27)
 
 ** One command, one list, no leftover noise

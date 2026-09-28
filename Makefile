@@ -25,9 +25,9 @@ TLDR_DIR   := tldr
 help:
 	@echo "folder_remove_empty - make targets"
 	@echo ""
-	@echo "  make test         run the whole check (pytest + ruff + mypy) via ./_tests"
+	@echo "  make test         the check entry point (./_tests: pytest + ruff + mypy)"
 	@echo "  make test-quick   run the test suite only (./_tests --quick)"
-	@echo "  make check-gui    run the window checks on a private display (=session asks for yours)"
+	@echo "  make check-gui    ./_tests --gui: the window checks (=session asks for your screen)"
 	@echo "  make check-313    run the whole check and the window checks on Python 3.13 (podman)"
 	@echo "  make check-all    the pre-push set: final + check-gui + check-313"
 	@echo "  make pins         fail when the installed dev tools drift from requirements-dev.txt"
@@ -43,9 +43,9 @@ help:
 	@echo ""
 	@echo "  install folders:  DEST_DIR=$(DEST_DIR)  DATA_DIR=$(DATA_DIR)"
 
-# Fail when the working interpreter does not match the pins CI installs.
+# Fail when the working interpreter or the CI install does not match the pins.
 pins:
-	@./_check_pins --strict
+	@./_check_pins --strict --ci
 
 # Run the full check: pytest, ruff and mypy, all from ./_tests.
 test:
@@ -107,12 +107,11 @@ uninstall:
 	@echo "uninstalled: $(APP)"
 
 # Remove every build output and cache of the project.
-# Run the window checks: the policy module decides where (a private display by
-# default, FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session asks for yours) and
-# tests/folder_remove_empty/window_checks.sh owns the module list.
+# The window checks: `./_tests --gui` owns them (the policy module decides where
+# they run, a private display by default; FOLDER_REMOVE_EMPTY_GUI_DISPLAY=session
+# asks for yours, and window_checks.sh owns the module list).
 check-gui:
-	@python3 -m remove_empty_folder_display --wrap-sh \
-		'bash tests/folder_remove_empty/window_checks.sh --assert-private'
+	@./_tests --gui
 
 # Verify the declared floor on demand: the whole check plus the window checks
 # on Python 3.13 inside a container (the CI interpreter). The repository is
